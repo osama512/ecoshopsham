@@ -1,13 +1,12 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Sparkles, Facebook, Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SUPABASE_URL = "https://bmfbiswkrleuanyoplfh.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtZmJpc3drcmxldWFueW9wbGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5Njc5MDYsImV4cCI6MjA5MDU0MzkwNn0.uHtVJacFohcmusSJW2QD0kFXW64Gqt6ZvQHj62ecsu8";
+const SYSTEM_PROMPT = `You are a professional Syrian marketing expert. Write a Facebook ad in the local Syrian dialect (White dialect/Damascene/Aleppine style). Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp.`;
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -15,7 +14,6 @@ const AIMarketerPage = () => {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
-  const abortRef = useRef<AbortController | null>(null);
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -23,101 +21,37 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      abortRef.current = new AbortController();
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is not configured. Please add it in Lovable Settings → Secrets.");
+      }
 
-      const resp = await fetch(
-        `${SUPABASE_URL}/functions/v1/generate-ad`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ productDescription: input.trim() }),
-          signal: abortRef.current.signal,
-        }
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+        systemInstruction: SYSTEM_PROMPT,
+      });
+
+      const result = await model.generateContentStream(
+        `Write a Facebook ad for this product:\n\n${input.trim()}`
       );
 
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Failed to generate ad" }));
-        throw new Error(err.error || `Error ${resp.status}`);
-      }
-
-      if (!resp.body) throw new Error("No response stream");
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
       let fullText = "";
-      let streamDone = false;
-
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            // Gemini SSE format: candidates[0].content.parts[0].text
-            const content =
-              parsed.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
-            if (content) {
-              fullText += content;
-              setGenerated(fullText);
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
-      }
-
-      // Flush remaining buffer
-      if (textBuffer.trim()) {
-        for (let raw of textBuffer.split("\n")) {
-          if (!raw) continue;
-          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
-          if (raw.startsWith(":") || raw.trim() === "") continue;
-          if (!raw.startsWith("data: ")) continue;
-          const jsonStr = raw.slice(6).trim();
-          if (jsonStr === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content =
-              parsed.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
-            if (content) {
-              fullText += content;
-              setGenerated(fullText);
-            }
-          } catch { /* ignore */ }
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) {
+          fullText += text;
+          setGenerated(fullText);
         }
       }
     } catch (err: any) {
-      if (err.name !== "AbortError") {
-        toast({
-          title: "Generation Failed",
-          description: err.message || "Could not generate the ad. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Generation Failed",
+        description: err.message || "Could not generate the ad. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
-      abortRef.current = null;
     }
   };
 
