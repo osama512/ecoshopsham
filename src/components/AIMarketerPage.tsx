@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
-const MOCK_MERCHANT_ID = "00000000-0000-0000-0000-000000000001";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
