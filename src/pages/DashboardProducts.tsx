@@ -62,7 +62,33 @@ const DashboardProducts = () => {
     setName(product.name);
     setPrice(String(product.price));
     setDescription(product.description || "");
+    setImageFile(null);
+    setImagePreview(product.image_url || null);
     setOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 5MB", variant: "destructive" });
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const ext = file.name.split(".").pop();
+    const filePath = `${user!.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(filePath, file);
+    if (error) {
+      console.error("Upload error:", error);
+      toast({ title: "Image upload failed", description: error.message, variant: "destructive" });
+      return null;
+    }
+    const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   const handleSave = async () => {
