@@ -16,8 +16,22 @@ const Storefront = () => {
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchStore = async () => {
       setLoading(true);
+
+      // Fetch merchant profile
+      const { data: profile } = await supabase
+        .from("profiles" as any)
+        .select("*")
+        .eq("id", storeId!)
+        .single();
+
+      if (profile) {
+        setStoreName((profile as any).store_name || "SyriaBiz Store");
+        setWhatsapp((profile as any).whatsapp_number || DEFAULT_WHATSAPP);
+      }
+
+      // Fetch products
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -30,7 +44,7 @@ const Storefront = () => {
       setLoading(false);
     };
 
-    if (storeId) fetchProducts();
+    if (storeId) fetchStore();
   }, [storeId]);
 
   const getWhatsAppLink = (productName: string) => {
