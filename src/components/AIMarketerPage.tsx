@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+// Use Lovable Cloud Supabase for edge functions (auto-deployed)
+const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -23,12 +25,12 @@ const AIMarketerPage = () => {
       abortRef.current = new AbortController();
 
       const resp = await fetch(
-        `${(supabase as any).supabaseUrl}/functions/v1/generate-ad`,
+        `${FUNCTIONS_URL}/generate-ad`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(supabase as any).supabaseKey}`,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
           },
           body: JSON.stringify({ productDescription: input.trim() }),
           signal: abortRef.current.signal,
