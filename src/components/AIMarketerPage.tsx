@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
-const MOCK_MERCHANT_ID = "00000000-0000-0000-0000-000000000001";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -16,6 +16,7 @@ const AIMarketerPage = () => {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -71,7 +72,7 @@ const AIMarketerPage = () => {
   };
 
   const handleCopyStoreLink = () => {
-    const link = `${window.location.origin}/s/${MOCK_MERCHANT_ID}`;
+    const link = `${window.location.origin}/s/${user?.id || "store"}`;
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
     toast({ title: "تم نسخ رابط المتجر! ✅" });

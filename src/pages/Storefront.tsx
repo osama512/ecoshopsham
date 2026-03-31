@@ -6,16 +6,32 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 
-const WHATSAPP_NUMBER = "963954170549";
+const DEFAULT_WHATSAPP = "963954170549";
 
 const Storefront = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeName, setStoreName] = useState("SyriaBiz Store");
+  const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchStore = async () => {
       setLoading(true);
+
+      // Fetch merchant profile
+      const { data: profile } = await supabase
+        .from("profiles" as any)
+        .select("*")
+        .eq("id", storeId!)
+        .single();
+
+      if (profile) {
+        setStoreName((profile as any).store_name || "SyriaBiz Store");
+        setWhatsapp((profile as any).whatsapp_number || DEFAULT_WHATSAPP);
+      }
+
+      // Fetch products
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -28,12 +44,13 @@ const Storefront = () => {
       setLoading(false);
     };
 
-    if (storeId) fetchProducts();
+    if (storeId) fetchStore();
   }, [storeId]);
 
   const getWhatsAppLink = (productName: string) => {
+    const num = whatsapp.replace(/[^0-9]/g, "");
     const message = encodeURIComponent(`مرحباً، أريد طلب ${productName} من متجركم.`);
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+    return `https://wa.me/${num}?text=${message}`;
   };
 
   return (
@@ -42,7 +59,7 @@ const Storefront = () => {
         <div className="flex items-center justify-center gap-2">
           <Store className="h-5 w-5 text-secondary" />
           <h1 className="text-lg font-display font-bold tracking-tight">
-            Syria<span className="text-secondary">Biz</span> Store
+            {storeName}
           </h1>
         </div>
         <p className="text-xs text-muted-foreground mt-1">تصفّح المنتجات واطلب مباشرة</p>
