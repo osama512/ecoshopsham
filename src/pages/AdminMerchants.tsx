@@ -38,8 +38,8 @@ const AdminMerchants = () => {
   const toggleStatus = async (merchant: MerchantProfile) => {
     setTogglingId(merchant.id);
     const newStatus = (merchant.status || "active") === "active" ? "suspended" : "active";
-    const { error } = await supabase
-      .from("profiles" as any)
+    const { error } = await (supabase
+      .from("profiles" as any) as any)
       .update({ status: newStatus } as any)
       .eq("id", merchant.id);
 
