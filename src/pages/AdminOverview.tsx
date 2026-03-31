@@ -32,8 +32,8 @@ const AdminOverview = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Admin Overview</h1>
-        <p className="text-sm text-muted-foreground">Platform statistics at a glance</p>
+        <h1 className="text-2xl font-display font-bold">نظرة عامة</h1>
+        <p className="text-sm text-muted-foreground">إحصائيات المنصة</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="p-6 flex items-center gap-4">
@@ -41,7 +41,7 @@ const AdminOverview = () => {
             <Users className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Total Merchants</p>
+            <p className="text-sm text-muted-foreground">إجمالي التجار</p>
             <p className="text-3xl font-display font-bold">{merchantCount}</p>
           </div>
         </Card>
@@ -50,7 +50,7 @@ const AdminOverview = () => {
             <Package className="h-6 w-6 text-secondary" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Total Products</p>
+            <p className="text-sm text-muted-foreground">إجمالي المنتجات</p>
             <p className="text-3xl font-display font-bold">{productCount}</p>
           </div>
         </Card>

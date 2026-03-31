@@ -26,9 +26,9 @@ const Signup = () => {
     });
 
     if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      toast({ title: "فشل إنشاء الحساب", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account created! Check your email to confirm." });
+      toast({ title: "تم إنشاء الحساب! تحقق من بريدك الإلكتروني للتأكيد." });
       navigate("/login");
     }
     setLoading(false);
@@ -41,13 +41,13 @@ const Signup = () => {
           <h1 className="text-2xl font-display font-bold">
             Syria<span className="text-secondary">Biz</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Create your merchant account</p>
+          <p className="text-sm text-muted-foreground mt-1">أنشئ حساب التاجر الخاص بك</p>
         </div>
 
         <Card className="p-6">
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">البريد الإلكتروني</Label>
               <Input
                 id="email"
                 type="email"
@@ -58,11 +58,11 @@ const Signup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">كلمة المرور</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Min 6 characters"
+                placeholder="٦ أحرف على الأقل"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -71,15 +71,15 @@ const Signup = () => {
             </div>
             <Button type="submit" className="w-full gap-2" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-              Create Account
+              إنشاء حساب
             </Button>
           </form>
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          لديك حساب بالفعل؟{" "}
           <Link to="/login" className="text-secondary font-semibold hover:underline">
-            Sign In
+            تسجيل الدخول
           </Link>
         </p>
       </div>

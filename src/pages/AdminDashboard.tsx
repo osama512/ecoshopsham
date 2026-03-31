@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { title: "Overview", url: "/admin", icon: LayoutDashboard },
-  { title: "Merchants", url: "/admin/merchants", icon: Users },
+  { title: "نظرة عامة", url: "/admin", icon: LayoutDashboard },
+  { title: "التجار", url: "/admin/merchants", icon: Users },
 ];
 
 function AdminSidebar() {
@@ -30,22 +30,22 @@ function AdminSidebar() {
   const location = useLocation();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" side="right">
       <SidebarContent>
         <div className="px-4 py-4">
           <h1 className="text-lg font-display font-bold tracking-tight">
-            {collapsed ? "A" : <>Syria<span className="text-secondary">Biz</span> <span className="text-xs text-muted-foreground">Admin</span></>}
+            {collapsed ? "A" : <>Syria<span className="text-secondary">Biz</span> <span className="text-xs text-muted-foreground">إدارة</span></>}
           </h1>
         </div>
         <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
+          <SidebarGroupLabel>الإدارة</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                     <NavLink to={item.url} end className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
+                      <item.icon className="ml-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -59,12 +59,12 @@ function AdminSidebar() {
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" asChild>
           <Link to="/dashboard">
             <ArrowLeftRight className="h-4 w-4" />
-            {!collapsed && "Merchant Portal"}
+            {!collapsed && "لوحة التاجر"}
           </Link>
         </Button>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={signOut}>
           <LogOut className="h-4 w-4" />
-          {!collapsed && "Sign Out"}
+          {!collapsed && "تسجيل الخروج"}
         </Button>
       </div>
     </Sidebar>
@@ -78,8 +78,8 @@ const AdminDashboard = () => {
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
           <header className="h-12 flex items-center border-b px-4 bg-card/95 backdrop-blur-md">
-            <SidebarTrigger className="mr-3" />
-            <span className="text-sm font-medium text-muted-foreground">Admin Portal</span>
+            <SidebarTrigger className="ml-3" />
+            <span className="text-sm font-medium text-muted-foreground">لوحة الإدارة</span>
           </header>
           <main className="flex-1 p-4 md:p-6 max-w-5xl">
             <Outlet />

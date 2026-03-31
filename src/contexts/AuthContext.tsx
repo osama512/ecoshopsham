@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   role: string | null;
+  merchantStatus: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   role: null,
+  merchantStatus: null,
   signOut: async () => {},
 });
 
@@ -25,17 +27,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
+  const [merchantStatus, setMerchantStatus] = useState<string | null>(null);
 
-  const fetchRole = async (userId: string) => {
+  const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, status")
       .eq("id", userId)
       .single();
     if (!error && data) {
       setRole((data as any).role ?? "merchant");
+      setMerchantStatus((data as any).status ?? "active");
     } else {
       setRole("merchant");
+      setMerchantStatus("active");
     }
   };
 
@@ -45,9 +50,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchRole(session.user.id), 0);
+          setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setRole(null);
+          setMerchantStatus(null);
         }
         setLoading(false);
       }
@@ -57,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchProfile(session.user.id);
       }
       setLoading(false);
     });
@@ -70,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, signOut }}>
       {children}
     </AuthContext.Provider>
   );

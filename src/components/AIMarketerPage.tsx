@@ -33,7 +33,6 @@ const AIMarketerPage = () => {
         }]
       };
 
-      console.log("Calling Gemini API...");
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -41,11 +40,8 @@ const AIMarketerPage = () => {
       });
 
       const data = await res.json();
-      console.log("Gemini response status:", res.status);
-      console.log("Gemini response data:", data);
 
       if (!res.ok) {
-        console.error("Gemini API error:", data);
         setGenerated(FALLBACK_AD);
         return;
       }
@@ -54,11 +50,9 @@ const AIMarketerPage = () => {
       if (adText && adText.trim().length > 0) {
         setGenerated(adText.trim());
       } else {
-        console.warn("Could not extract ad text:", data);
         setGenerated(FALLBACK_AD);
       }
-    } catch (err) {
-      console.error("Fetch error:", err);
+    } catch {
       setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
@@ -81,15 +75,15 @@ const AIMarketerPage = () => {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-display font-bold">AI Marketer</h1>
-          <p className="text-sm text-muted-foreground">Generate ads for your products instantly using AI</p>
+          <h1 className="text-2xl font-display font-bold">المسوّق الذكي</h1>
+          <p className="text-sm text-muted-foreground">أنشئ إعلانات لمنتجاتك فوراً بالذكاء الاصطناعي</p>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="gap-1.5 text-xs"
+          className="gap-1.5 text-xs self-start"
           onClick={handleCopyStoreLink}
         >
           {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
@@ -100,12 +94,12 @@ const AIMarketerPage = () => {
       <Card className="p-4 space-y-4">
         <div className="flex items-center gap-2 text-secondary">
           <Sparkles className="h-5 w-5" />
-          <span className="font-semibold text-sm">What product do you want to market?</span>
+          <span className="font-semibold text-sm">ما المنتج الذي تريد تسويقه؟</span>
         </div>
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. صابون حلبي طبيعي بزيت الزيتون..."
+          placeholder="مثال: صابون حلبي طبيعي بزيت الزيتون..."
           rows={4}
           className="resize-none"
           disabled={loading}
@@ -116,7 +110,7 @@ const AIMarketerPage = () => {
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
-          {loading ? "عم يجهزلك الإعلان..." : "Generate Facebook Ad"}
+          {loading ? "عم يجهزلك الإعلان..." : "إنشاء إعلان فيسبوك"}
         </Button>
       </Card>
 
@@ -132,11 +126,11 @@ const AIMarketerPage = () => {
           <div className="flex items-center justify-between">
             <span className="font-semibold text-sm flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-secondary" />
-              Generated Ad
+              الإعلان الجاهز
             </span>
             <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5 text-xs h-8">
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied!" : "Copy"}
+              {copied ? "تم النسخ!" : "نسخ"}
             </Button>
           </div>
           <p className="text-sm whitespace-pre-line leading-relaxed" dir="auto">{generated}</p>

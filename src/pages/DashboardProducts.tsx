@@ -37,7 +37,7 @@ const DashboardProducts = () => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast({ title: "Error fetching products", description: error.message, variant: "destructive" });
+      toast({ title: "خطأ في جلب المنتجات", description: error.message, variant: "destructive" });
     } else {
       setProducts(data ?? []);
     }
@@ -71,7 +71,7 @@ const DashboardProducts = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Image too large", description: "Max 5MB", variant: "destructive" });
+      toast({ title: "الصورة كبيرة جداً", description: "الحد الأقصى 5 ميغابايت", variant: "destructive" });
       return;
     }
     setImageFile(file);
@@ -81,27 +81,22 @@ const DashboardProducts = () => {
   const uploadImage = async (file: File): Promise<string | null> => {
     const ext = file.name.split(".").pop();
     const filePath = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    console.log("Uploading to path:", filePath);
-    const { data: uploadData, error } = await supabase.storage.from("product-images").upload(filePath, file);
+    const { error } = await supabase.storage.from("product-images").upload(filePath, file);
     if (error) {
-      console.error("Upload error:", error);
-      toast({ title: "Image upload failed", description: error.message, variant: "destructive" });
+      toast({ title: "فشل رفع الصورة", description: error.message, variant: "destructive" });
       return null;
     }
-    console.log("Upload success:", uploadData);
     const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
-    console.log("Public URL:", data.publicUrl);
     return data.publicUrl;
   };
 
   const handleSave = async () => {
     if (!user || !name.trim() || !price.trim()) {
-      toast({ title: "Please fill in name and price", variant: "destructive" });
+      toast({ title: "يرجى تعبئة الاسم والسعر", variant: "destructive" });
       return;
     }
 
     setSaving(true);
-
     let imageUrl: string | null | undefined = undefined;
     if (imageFile) {
       const url = await uploadImage(imageFile);
@@ -116,21 +111,18 @@ const DashboardProducts = () => {
         description: description.trim() || null,
       };
       if (imageUrl !== undefined) updateData.image_url = imageUrl;
-      console.log("Updating product:", editingProduct.id, updateData);
 
       const { data: updatedRows, error } = await (supabase.from("products") as any)
         .update(updateData)
         .eq("id", editingProduct.id)
         .select();
 
-      console.log("Update result:", { updatedRows, error });
       if (error) {
-        toast({ title: "Error updating", description: error.message, variant: "destructive" });
+        toast({ title: "خطأ في التحديث", description: error.message, variant: "destructive" });
       } else if (!updatedRows || updatedRows.length === 0) {
-        console.error("RLS blocked update — 0 rows affected. Check your UPDATE policy on products table.");
-        toast({ title: "Update blocked", description: "RLS policy prevented the update. Check Supabase policies.", variant: "destructive" });
+        toast({ title: "تم حظر التحديث", description: "تحقق من سياسات RLS.", variant: "destructive" });
       } else {
-        toast({ title: "Product updated!" });
+        toast({ title: "تم تحديث المنتج! ✅" });
       }
     } else {
       const insertData = {
@@ -140,17 +132,15 @@ const DashboardProducts = () => {
         merchant_id: user.id,
         ...(imageUrl ? { image_url: imageUrl } : {}),
       };
-      console.log("Inserting product:", insertData);
 
-      const { data: insertedRows, error } = await (supabase.from("products") as any)
+      const { error } = await (supabase.from("products") as any)
         .insert(insertData)
         .select();
 
-      console.log("Insert result:", { insertedRows, error });
       if (error) {
-        toast({ title: "Error adding", description: error.message, variant: "destructive" });
+        toast({ title: "خطأ في الإضافة", description: error.message, variant: "destructive" });
       } else {
-        toast({ title: "Product added!" });
+        toast({ title: "تمت إضافة المنتج! ✅" });
       }
     }
 
@@ -163,9 +153,9 @@ const DashboardProducts = () => {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) {
-      toast({ title: "Error deleting", description: error.message, variant: "destructive" });
+      toast({ title: "خطأ في الحذف", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Product deleted" });
+      toast({ title: "تم حذف المنتج" });
       fetchProducts();
     }
   };
@@ -174,61 +164,55 @@ const DashboardProducts = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Products</h1>
-          <p className="text-sm text-muted-foreground">{products.length} items listed</p>
+          <h1 className="text-2xl font-display font-bold">المنتجات</h1>
+          <p className="text-sm text-muted-foreground">{products.length} منتج مدرج</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-full gap-1.5 font-semibold shadow-lg shadow-secondary/25">
               <Plus className="h-4 w-4" />
-              Add Product
+              إضافة منتج
             </Button>
           </DialogTrigger>
           <DialogContent className="mx-4 max-w-[calc(100vw-2rem)] rounded-2xl">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
-                {editingProduct ? "Edit Product" : "New Product"}
+                {editingProduct ? "تعديل المنتج" : "منتج جديد"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Product Name</Label>
-                <Input id="name" placeholder="e.g. Aleppo Soap" value={name} onChange={(e) => setName(e.target.value)} />
+                <Label htmlFor="name">اسم المنتج</Label>
+                <Input id="name" placeholder="مثال: صابون حلبي" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price (SYP)</Label>
+                <Label htmlFor="price">السعر (ل.س)</Label>
                 <Input id="price" type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="desc">Description</Label>
-                <Textarea id="desc" placeholder="Describe your product..." rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+                <Label htmlFor="desc">الوصف</Label>
+                <Textarea id="desc" placeholder="وصف المنتج..." rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Product Image</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
+                <Label>صورة المنتج</Label>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="cursor-pointer border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/50 transition-colors"
                 >
                   {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-md" />
+                    <img src={imagePreview} alt="معاينة" className="w-full h-32 object-cover rounded-md" />
                   ) : (
                     <>
                       <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
-                      <span className="text-xs text-muted-foreground">Click to upload image (max 5MB)</span>
+                      <span className="text-xs text-muted-foreground">اضغط لرفع صورة (حد أقصى 5 ميغابايت)</span>
                     </>
                   )}
                 </div>
               </div>
               <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {editingProduct ? "Save Changes" : "Add Product"}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
+                {editingProduct ? "حفظ التعديلات" : "إضافة المنتج"}
               </Button>
             </div>
           </DialogContent>
@@ -242,8 +226,8 @@ const DashboardProducts = () => {
       ) : products.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Package className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No products yet</p>
-          <p className="text-sm">Tap "Add Product" to get started</p>
+          <p className="font-medium">لا توجد منتجات بعد</p>
+          <p className="text-sm">اضغط "إضافة منتج" للبدء</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -261,7 +245,7 @@ const DashboardProducts = () => {
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</p>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-display font-bold text-sm">{Number(product.price).toLocaleString()} SYP</span>
+                <span className="font-display font-bold text-sm">{Number(product.price).toLocaleString()} ل.س</span>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
                     <Pencil className="h-3.5 w-3.5" />
@@ -274,12 +258,12 @@ const DashboardProducts = () => {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Product?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                        <AlertDialogTitle>حذف المنتج؟</AlertDialogTitle>
+                        <AlertDialogDescription>لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
                       </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(product.id)}>Delete</AlertDialogAction>
+                      <AlertDialogFooter className="flex-row-reverse gap-2">
+                        <AlertDialogAction onClick={() => handleDelete(product.id)}>حذف</AlertDialogAction>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
