@@ -3,9 +3,9 @@ import { Sparkles, Facebook, Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 
 const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
+const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -19,66 +19,41 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      const { data, error } = await (supabase.rpc as any)("generate_syrian_ad", {
-        prompt: input.trim(),
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const body = {
+        contents: [{
+          parts: [{
+            text: "أنت مسوق سوري محترف. اكتب إعلان فيسبوك بلهجة سورية جذابة للمنتج التالي: " + input.trim()
+          }]
+        }]
+      };
+
+      console.log("Calling Gemini API...");
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
-      console.log("Raw RPC Response:", data);
-      console.log("Raw RPC Response type:", typeof data);
-      console.log("RPC error:", error);
+      const data = await res.json();
+      console.log("Gemini response status:", res.status);
+      console.log("Gemini response data:", data);
 
-      if (error) {
-        console.error("RPC returned error:", JSON.stringify(error));
+      if (!res.ok) {
+        console.error("Gemini API error:", data);
         setGenerated(FALLBACK_AD);
         return;
       }
 
-      if (data === null || data === undefined) {
-        console.warn("RPC returned null/undefined data");
-        setGenerated(FALLBACK_AD);
-        return;
-      }
-
-      // Try to extract the ad text from various possible response shapes
-      let adText = FALLBACK_AD;
-
-      // Step 1: If data is a string, try to parse it as JSON
-      let parsed: any = data;
-      if (typeof data === "string") {
-        try {
-          parsed = JSON.parse(data);
-          console.log("Parsed string data into:", parsed);
-        } catch {
-          // data is plain text, not JSON — use it directly
-          console.log("Data is plain text string");
-          if (data.trim().length > 0) {
-            adText = data.trim();
-            setGenerated(adText);
-            return;
-          }
-        }
-      }
-
-      // Step 2: Try Gemini nested structure
-      const geminiText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (geminiText && typeof geminiText === "string" && geminiText.trim().length > 0) {
-        console.log("Extracted from Gemini structure:", geminiText);
-        adText = geminiText.trim();
-      }
-      // Step 3: Check for a direct .ad property
-      else if (parsed?.ad && typeof parsed.ad === "string") {
-        adText = parsed.ad.trim();
-      }
-      // Step 4: If parsed is a plain string
-      else if (typeof parsed === "string" && parsed.trim().length > 0) {
-        adText = parsed.trim();
+      const adText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (adText && adText.trim().length > 0) {
+        setGenerated(adText.trim());
       } else {
-        console.warn("Could not extract ad text. Full parsed data:", JSON.stringify(parsed, null, 2));
+        console.warn("Could not extract ad text:", data);
+        setGenerated(FALLBACK_AD);
       }
-
-      setGenerated(adText);
     } catch (err) {
-      console.error("Unexpected error calling RPC:", err);
+      console.error("Fetch error:", err);
       setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
