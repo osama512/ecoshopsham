@@ -70,11 +70,30 @@ const AIMarketerPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyStoreLink = () => {
+    const link = `${window.location.origin}/s/${MOCK_MERCHANT_ID}`;
+    navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    toast({ title: "تم نسخ رابط المتجر! ✅" });
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-display font-bold">AI Marketer</h1>
-        <p className="text-sm text-muted-foreground">Generate ads for your products instantly using AI</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold">AI Marketer</h1>
+          <p className="text-sm text-muted-foreground">Generate ads for your products instantly using AI</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={handleCopyStoreLink}
+        >
+          {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+          {linkCopied ? "تم النسخ" : "نسخ رابط المتجر"}
+        </Button>
       </div>
 
       <Card className="p-4 space-y-4">
