@@ -81,13 +81,16 @@ const DashboardProducts = () => {
   const uploadImage = async (file: File): Promise<string | null> => {
     const ext = file.name.split(".").pop();
     const filePath = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("product-images").upload(filePath, file);
+    console.log("Uploading to path:", filePath);
+    const { data: uploadData, error } = await supabase.storage.from("product-images").upload(filePath, file);
     if (error) {
       console.error("Upload error:", error);
       toast({ title: "Image upload failed", description: error.message, variant: "destructive" });
       return null;
     }
+    console.log("Upload success:", uploadData);
     const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
+    console.log("Public URL:", data.publicUrl);
     return data.publicUrl;
   };
 
