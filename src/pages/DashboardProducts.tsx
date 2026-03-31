@@ -188,6 +188,28 @@ const DashboardProducts = () => {
                 <Label htmlFor="desc">Description</Label>
                 <Textarea id="desc" placeholder="Describe your product..." rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
+              <div className="space-y-2">
+                <Label>Product Image</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="cursor-pointer border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/50 transition-colors"
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-md" />
+                  ) : (
+                    <>
+                      <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
+                      <span className="text-xs text-muted-foreground">Click to upload image (max 5MB)</span>
+                    </>
+                  )}
+                </div>
               <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {editingProduct ? "Save Changes" : "Add Product"}
