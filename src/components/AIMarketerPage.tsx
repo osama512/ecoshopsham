@@ -23,30 +23,62 @@ const AIMarketerPage = () => {
         prompt: input.trim(),
       });
 
+      console.log("Raw RPC Response:", data);
+      console.log("Raw RPC Response type:", typeof data);
+      console.log("RPC error:", error);
+
       if (error) {
-        console.error("RPC error:", error);
+        console.error("RPC returned error:", JSON.stringify(error));
         setGenerated(FALLBACK_AD);
-      } else {
-        // Parse nested Gemini JSON if returned as string
-        let adText = FALLBACK_AD;
+        return;
+      }
+
+      if (data === null || data === undefined) {
+        console.warn("RPC returned null/undefined data");
+        setGenerated(FALLBACK_AD);
+        return;
+      }
+
+      // Try to extract the ad text from various possible response shapes
+      let adText = FALLBACK_AD;
+
+      // Step 1: If data is a string, try to parse it as JSON
+      let parsed: any = data;
+      if (typeof data === "string") {
         try {
-          const parsed = typeof data === "string" ? JSON.parse(data) : data;
-          console.log("Parsed Gemini response:", parsed);
-          const extracted = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (extracted && extracted.trim().length > 0) {
-            adText = extracted.trim();
-          } else if (typeof parsed === "string" && parsed.trim().length > 0) {
-            adText = parsed.trim();
-          }
+          parsed = JSON.parse(data);
+          console.log("Parsed string data into:", parsed);
         } catch {
-          if (typeof data === "string" && data.trim().length > 0) {
+          // data is plain text, not JSON — use it directly
+          console.log("Data is plain text string");
+          if (data.trim().length > 0) {
             adText = data.trim();
+            setGenerated(adText);
+            return;
           }
         }
-        setGenerated(adText);
       }
+
+      // Step 2: Try Gemini nested structure
+      const geminiText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (geminiText && typeof geminiText === "string" && geminiText.trim().length > 0) {
+        console.log("Extracted from Gemini structure:", geminiText);
+        adText = geminiText.trim();
+      }
+      // Step 3: Check for a direct .ad property
+      else if (parsed?.ad && typeof parsed.ad === "string") {
+        adText = parsed.ad.trim();
+      }
+      // Step 4: If parsed is a plain string
+      else if (typeof parsed === "string" && parsed.trim().length > 0) {
+        adText = parsed.trim();
+      } else {
+        console.warn("Could not extract ad text. Full parsed data:", JSON.stringify(parsed, null, 2));
+      }
+
+      setGenerated(adText);
     } catch (err) {
-      console.error("Invoke error:", err);
+      console.error("Unexpected error calling RPC:", err);
       setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
