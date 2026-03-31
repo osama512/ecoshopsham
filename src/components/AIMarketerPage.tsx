@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 const API_KEY = "AIzaSyCoUF_AEkXH2KxMIVCfn53Emp7mIgd2zTg";
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -25,11 +25,12 @@ const AIMarketerPage = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: "You are a professional Syrian marketer. Write a Facebook ad in Syrian dialect. Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp." }],
-          },
           contents: [
-            { role: "user", parts: [{ text: `Write a Facebook ad for this product:\n\n${input.trim()}` }] },
+            {
+              parts: [
+                { text: "You are a professional Syrian marketer. Write a Facebook ad in Syrian dialect. Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp.\n\nWrite a Facebook ad for this product:\n\n" + input.trim() },
+              ],
+            },
           ],
         }),
       });
