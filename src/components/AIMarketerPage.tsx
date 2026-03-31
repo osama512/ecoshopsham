@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-// Use Lovable Cloud Supabase for edge functions (auto-deployed)
-const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+const SUPABASE_URL = "https://bmfbiswkrleuanyoplfh.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtZmJpc3drcmxldWFueW9wbGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5Njc5MDYsImV4cCI6MjA5MDU0MzkwNn0.uHtVJacFohcmusSJW2QD0kFXW64Gqt6ZvQHj62ecsu8";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -25,12 +26,12 @@ const AIMarketerPage = () => {
       abortRef.current = new AbortController();
 
       const resp = await fetch(
-        `${FUNCTIONS_URL}/generate-ad`,
+        `${SUPABASE_URL}/functions/v1/generate-ad`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${SUPABASE_KEY}`,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ productDescription: input.trim() }),
           signal: abortRef.current.signal,
@@ -72,7 +73,9 @@ const AIMarketerPage = () => {
 
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            // Gemini SSE format: candidates[0].content.parts[0].text
+            const content =
+              parsed.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
             if (content) {
               fullText += content;
               setGenerated(fullText);
@@ -95,7 +98,8 @@ const AIMarketerPage = () => {
           if (jsonStr === "[DONE]") continue;
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            const content =
+              parsed.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
             if (content) {
               fullText += content;
               setGenerated(fullText);
