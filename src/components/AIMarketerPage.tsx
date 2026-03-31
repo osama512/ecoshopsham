@@ -19,15 +19,24 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      const { data, error } = await supabase.functions.invoke("syriabiz-ai", {
-        body: { productDescription: input.trim() },
+      const { data, error } = await supabase.rpc("generate_syrian_ad", {
+        prompt: input.trim(),
       });
 
       if (error) {
-        console.error("Edge function error:", error);
+        console.error("RPC error:", error);
         setGenerated(FALLBACK_AD);
       } else {
-        setGenerated(data?.ad || FALLBACK_AD);
+        // Parse nested Gemini JSON if returned as string
+        let adText = FALLBACK_AD;
+        try {
+          const parsed = typeof data === "string" ? JSON.parse(data) : data;
+          adText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || parsed?.ad || (typeof parsed === "string" ? parsed : FALLBACK_AD);
+        } catch {
+          // If it's already plain text
+          adText = typeof data === "string" && data.length > 0 ? data : FALLBACK_AD;
+        }
+        setGenerated(adText);
       }
     } catch (err) {
       console.error("Invoke error:", err);
