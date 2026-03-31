@@ -36,21 +36,11 @@ const AIMarketerPage = () => {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err?.error?.message || `API error ${res.status}`);
-      }
-
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!text) throw new Error("No content returned from Gemini.");
+      const text = res.ok ? (data?.candidates?.[0]?.content?.parts?.[0]?.text || FALLBACK_AD) : FALLBACK_AD;
       setGenerated(text);
-    } catch (err: any) {
-      toast({
-        title: "Generation Failed",
-        description: err.message || "Could not generate the ad.",
-        variant: "destructive",
-      });
+    } catch {
+      setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
     }
