@@ -81,13 +81,16 @@ const DashboardProducts = () => {
   const uploadImage = async (file: File): Promise<string | null> => {
     const ext = file.name.split(".").pop();
     const filePath = `${user!.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("product-images").upload(filePath, file);
+    console.log("Uploading to path:", filePath);
+    const { data: uploadData, error } = await supabase.storage.from("product-images").upload(filePath, file);
     if (error) {
       console.error("Upload error:", error);
       toast({ title: "Image upload failed", description: error.message, variant: "destructive" });
       return null;
     }
+    console.log("Upload success:", uploadData);
     const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
+    console.log("Public URL:", data.publicUrl);
     return data.publicUrl;
   };
 
@@ -113,25 +116,37 @@ const DashboardProducts = () => {
         description: description.trim() || null,
       };
       if (imageUrl !== undefined) updateData.image_url = imageUrl;
+      console.log("Updating product:", editingProduct.id, updateData);
 
-      const { error } = await (supabase.from("products") as any)
+      const { data: updatedRows, error } = await (supabase.from("products") as any)
         .update(updateData)
-        .eq("id", editingProduct.id);
+        .eq("id", editingProduct.id)
+        .select();
 
+      console.log("Update result:", { updatedRows, error });
       if (error) {
         toast({ title: "Error updating", description: error.message, variant: "destructive" });
+      } else if (!updatedRows || updatedRows.length === 0) {
+        console.error("RLS blocked update — 0 rows affected. Check your UPDATE policy on products table.");
+        toast({ title: "Update blocked", description: "RLS policy prevented the update. Check Supabase policies.", variant: "destructive" });
       } else {
         toast({ title: "Product updated!" });
       }
     } else {
-      const { error } = await supabase.from("products").insert({
+      const insertData = {
         name: name.trim(),
         price: parseFloat(price),
         description: description.trim() || null,
         merchant_id: user.id,
         ...(imageUrl ? { image_url: imageUrl } : {}),
-      } as any);
+      };
+      console.log("Inserting product:", insertData);
 
+      const { data: insertedRows, error } = await (supabase.from("products") as any)
+        .insert(insertData)
+        .select();
+
+      console.log("Insert result:", { insertedRows, error });
       if (error) {
         toast({ title: "Error adding", description: error.message, variant: "destructive" });
       } else {
