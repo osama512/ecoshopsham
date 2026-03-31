@@ -59,7 +59,7 @@ const Storefront = () => {
         <div className="flex items-center justify-center gap-2">
           <Store className="h-5 w-5 text-secondary" />
           <h1 className="text-lg font-display font-bold tracking-tight">
-            Syria<span className="text-secondary">Biz</span> Store
+            {storeName}
           </h1>
         </div>
         <p className="text-xs text-muted-foreground mt-1">تصفّح المنتجات واطلب مباشرة</p>
