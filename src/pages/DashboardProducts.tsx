@@ -98,14 +98,24 @@ const DashboardProducts = () => {
     }
 
     setSaving(true);
+
+    let imageUrl: string | null | undefined = undefined;
+    if (imageFile) {
+      const url = await uploadImage(imageFile);
+      if (url) imageUrl = url;
+      else { setSaving(false); return; }
+    }
+
     if (editingProduct) {
-      const { error } = await (supabase
-        .from("products") as any)
-        .update({
-          name: name.trim(),
-          price: parseFloat(price),
-          description: description.trim() || null,
-        })
+      const updateData: Record<string, unknown> = {
+        name: name.trim(),
+        price: parseFloat(price),
+        description: description.trim() || null,
+      };
+      if (imageUrl !== undefined) updateData.image_url = imageUrl;
+
+      const { error } = await (supabase.from("products") as any)
+        .update(updateData)
         .eq("id", editingProduct.id);
 
       if (error) {
@@ -119,6 +129,7 @@ const DashboardProducts = () => {
         price: parseFloat(price),
         description: description.trim() || null,
         merchant_id: user.id,
+        ...(imageUrl ? { image_url: imageUrl } : {}),
       } as any);
 
       if (error) {
