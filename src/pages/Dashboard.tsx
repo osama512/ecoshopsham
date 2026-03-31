@@ -27,8 +27,9 @@ const navItems = [
 function DashboardSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { signOut } = useAuth();
+  const { signOut, role } = useAuth();
   const location = useLocation();
+  const isAdmin = role === "admin";
 
   return (
     <Sidebar collapsible="icon">
