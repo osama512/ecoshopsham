@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 
-const WHATSAPP_NUMBER = "963954170549";
+const DEFAULT_WHATSAPP = "963954170549";
 
 const Storefront = () => {
   const { storeId } = useParams<{ storeId: string }>();
