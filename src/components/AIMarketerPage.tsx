@@ -19,7 +19,7 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      const { data, error } = await supabase.rpc("generate_syrian_ad", {
+      const { data, error } = await (supabase.rpc as any)("generate_syrian_ad", {
         prompt: input.trim(),
       });
 
