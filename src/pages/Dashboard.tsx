@@ -57,7 +57,15 @@ function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <div className="mt-auto p-3">
+      <div className="mt-auto p-3 space-y-1">
+        {isAdmin && (
+          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" asChild>
+            <Link to="/admin">
+              <Shield className="h-4 w-4" />
+              {!collapsed && "Admin Portal"}
+            </Link>
+          </Button>
+        )}
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={signOut}>
           <LogOut className="h-4 w-4" />
           {!collapsed && "Sign Out"}
