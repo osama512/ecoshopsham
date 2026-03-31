@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Package, MessageCircle, Store, Loader2 } from "lucide-react";
+import { Package, MessageCircle, Store, Loader2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +14,12 @@ const Storefront = () => {
   const [loading, setLoading] = useState(true);
   const [storeName, setStoreName] = useState("SyriaBiz Store");
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
+  const [suspended, setSuspended] = useState(false);
 
   useEffect(() => {
     const fetchStore = async () => {
       setLoading(true);
 
-      // Fetch merchant profile
       const { data: profile } = await supabase
         .from("profiles" as any)
         .select("*")
@@ -29,9 +29,13 @@ const Storefront = () => {
       if (profile) {
         setStoreName((profile as any).store_name || "SyriaBiz Store");
         setWhatsapp((profile as any).whatsapp_number || DEFAULT_WHATSAPP);
+        if ((profile as any).status === "suspended") {
+          setSuspended(true);
+          setLoading(false);
+          return;
+        }
       }
 
-      // Fetch products
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -71,6 +75,12 @@ const Storefront = () => {
             <Loader2 className="h-8 w-8 animate-spin text-secondary" />
             <p className="text-sm text-muted-foreground">جاري تحميل المنتجات...</p>
           </div>
+        ) : suspended ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <Ban className="h-14 w-14 mx-auto mb-3 opacity-40 text-destructive" />
+            <p className="font-semibold text-lg">هذا المتجر غير متاح حالياً</p>
+            <p className="text-sm mt-1">يرجى المحاولة لاحقاً</p>
+          </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Package className="h-14 w-14 mx-auto mb-3 opacity-40" />
@@ -99,7 +109,7 @@ const Storefront = () => {
                     <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
                   )}
                   <span className="font-display font-bold text-sm text-secondary mt-auto">
-                    {Number(product.price).toLocaleString()} SYP
+                    {Number(product.price).toLocaleString()} ل.س
                   </span>
                   <a href={getWhatsAppLink(product.name)} target="_blank" rel="noopener noreferrer">
                     <Button
@@ -118,7 +128,7 @@ const Storefront = () => {
       </main>
 
       <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-8">
-        Powered by Syria<span className="text-secondary font-semibold">Biz</span>
+        مدعوم من Syria<span className="text-secondary font-semibold">Biz</span>
       </footer>
     </div>
   );

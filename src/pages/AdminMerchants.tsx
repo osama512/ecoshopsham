@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface MerchantProfile {
   id: string;
@@ -10,23 +13,44 @@ interface MerchantProfile {
   whatsapp_number: string | null;
   created_at: string;
   role: string | null;
+  status: string | null;
 }
 
 const AdminMerchants = () => {
   const [merchants, setMerchants] = useState<MerchantProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const fetchMerchants = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setMerchants((data as any as MerchantProfile[]) ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setMerchants((data as any as MerchantProfile[]) ?? []);
-      setLoading(false);
-    };
-    fetch();
+    fetchMerchants();
   }, []);
+
+  const toggleStatus = async (merchant: MerchantProfile) => {
+    setTogglingId(merchant.id);
+    const newStatus = (merchant.status || "active") === "active" ? "suspended" : "active";
+    const { error } = await (supabase
+      .from("profiles" as any) as any)
+      .update({ status: newStatus } as any)
+      .eq("id", merchant.id);
+
+    if (error) {
+      toast({ title: "خطأ في تحديث الحالة", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: newStatus === "suspended" ? "تم إيقاف التاجر" : "تم تفعيل التاجر" });
+      fetchMerchants();
+    }
+    setTogglingId(null);
+  };
 
   if (loading) {
     return (
@@ -39,33 +63,86 @@ const AdminMerchants = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Merchants</h1>
-        <p className="text-sm text-muted-foreground">{merchants.length} registered merchants</p>
+        <h1 className="text-2xl font-display font-bold">التجار</h1>
+        <p className="text-sm text-muted-foreground">{merchants.length} تاجر مسجّل</p>
       </div>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Store Name</TableHead>
-              <TableHead>WhatsApp</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead>اسم المتجر</TableHead>
+              <TableHead>واتساب</TableHead>
+              <TableHead>الحالة</TableHead>
+              <TableHead>تاريخ الانضمام</TableHead>
+              <TableHead>إجراء</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {merchants.map((m) => (
-              <TableRow key={m.id}>
-                <TableCell className="font-medium">{m.store_name || "—"}</TableCell>
-                <TableCell className="font-mono text-sm">{m.whatsapp_number || "—"}</TableCell>
-                <TableCell className="capitalize">{m.role || "merchant"}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {new Date(m.created_at).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            {merchants.map((m) => {
+              const status = m.status || "active";
+              const isSuspended = status === "suspended";
+              return (
+                <TableRow key={m.id}>
+                  <TableCell className="font-medium">{m.store_name || "—"}</TableCell>
+                  <TableCell className="font-mono text-sm">{m.whatsapp_number || "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
+                      {isSuspended ? "موقوف" : "نشط"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(m.created_at).toLocaleDateString("ar-SY")}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant={isSuspended ? "default" : "destructive"}
+                      size="sm"
+                      className="text-xs"
+                      disabled={togglingId === m.id}
+                      onClick={() => toggleStatus(m)}
+                    >
+                      {togglingId === m.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : isSuspended ? "تفعيل" : "إيقاف"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Card>
+
+      {/* Mobile cards for small screens */}
+      <div className="block sm:hidden space-y-3">
+        {merchants.map((m) => {
+          const status = m.status || "active";
+          const isSuspended = status === "suspended";
+          return (
+            <Card key={m.id + "-mobile"} className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">{m.store_name || "—"}</span>
+                <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
+                  {isSuspended ? "موقوف" : "نشط"}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground font-mono">{m.whatsapp_number || "—"}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString("ar-SY")}</span>
+                <Button
+                  variant={isSuspended ? "default" : "destructive"}
+                  size="sm"
+                  className="text-xs"
+                  disabled={togglingId === m.id}
+                  onClick={() => toggleStatus(m)}
+                >
+                  {togglingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };

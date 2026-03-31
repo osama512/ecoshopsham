@@ -8,10 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
-  pending: { label: "Pending", className: "bg-warning/15 text-warning border-warning/30", icon: Clock },
-  processing: { label: "Processing", className: "bg-primary/10 text-primary border-primary/30", icon: Truck },
-  completed: { label: "Completed", className: "bg-success/15 text-success border-success/30", icon: CheckCircle2 },
-  cancelled: { label: "Cancelled", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
+  pending: { label: "قيد الانتظار", className: "bg-warning/15 text-warning border-warning/30", icon: Clock },
+  processing: { label: "قيد المعالجة", className: "bg-primary/10 text-primary border-primary/30", icon: Truck },
+  completed: { label: "مكتمل", className: "bg-success/15 text-success border-success/30", icon: CheckCircle2 },
+  cancelled: { label: "ملغى", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
 };
 
 const OrdersPage = () => {
@@ -28,7 +28,7 @@ const OrdersPage = () => {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast({ title: "Error fetching orders", description: error.message, variant: "destructive" });
+        toast({ title: "خطأ في جلب الطلبات", description: error.message, variant: "destructive" });
       } else {
         setOrders(data ?? []);
       }
@@ -56,8 +56,8 @@ const OrdersPage = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-display font-bold">Orders</h1>
-        <p className="text-sm text-muted-foreground">{pendingCount} pending · {orders.length} total</p>
+        <h1 className="text-2xl font-display font-bold">الطلبات</h1>
+        <p className="text-sm text-muted-foreground">{pendingCount} قيد الانتظار · {orders.length} إجمالي</p>
       </div>
 
       {loading ? (
@@ -67,8 +67,8 @@ const OrdersPage = () => {
       ) : orders.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <ShoppingBag className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No orders yet</p>
-          <p className="text-sm">Orders will appear here</p>
+          <p className="font-medium">لا توجد طلبات بعد</p>
+          <p className="text-sm">ستظهر الطلبات هنا</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -82,7 +82,7 @@ const OrdersPage = () => {
                   <div className="space-y-1">
                     <span className="font-semibold">{order.customer_name}</span>
                     <p className="text-xs text-muted-foreground">
-                      {itemCount} item{itemCount !== 1 ? "s" : ""} · {formatDate(order.created_at)}
+                      {itemCount} عنصر · {formatDate(order.created_at)}
                     </p>
                   </div>
                   <Badge variant="outline" className={`${config.className} gap-1 text-[11px] font-medium`}>
@@ -91,8 +91,8 @@ const OrdersPage = () => {
                   </Badge>
                 </div>
                 <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Total</span>
-                  <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} SYP</span>
+                  <span className="text-xs text-muted-foreground">الإجمالي</span>
+                  <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} ل.س</span>
                 </div>
               </Card>
             );

@@ -50,9 +50,9 @@ const DashboardSettings = () => {
       } as any);
 
     if (error) {
-      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+      toast({ title: "خطأ في الحفظ", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Settings saved! ✅" });
+      toast({ title: "تم حفظ الإعدادات! ✅" });
     }
     setSaving(false);
   };
@@ -61,7 +61,7 @@ const DashboardSettings = () => {
     if (!user) return;
     navigator.clipboard.writeText(`${window.location.origin}/s/${user.id}`);
     setLinkCopied(true);
-    toast({ title: "Store link copied! ✅" });
+    toast({ title: "تم نسخ رابط المتجر! ✅" });
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
@@ -76,34 +76,34 @@ const DashboardSettings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Store Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your store profile</p>
+        <h1 className="text-2xl font-display font-bold">إعدادات المتجر</h1>
+        <p className="text-sm text-muted-foreground">إدارة ملف المتجر الخاص بك</p>
       </div>
 
       <Card className="p-5 space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="storeName">Store Name</Label>
-          <Input id="storeName" placeholder="My Syrian Shop" value={storeName} onChange={(e) => setStoreName(e.target.value)} />
+          <Label htmlFor="storeName">اسم المتجر</Label>
+          <Input id="storeName" placeholder="متجري السوري" value={storeName} onChange={(e) => setStoreName(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="whatsapp">WhatsApp Number</Label>
+          <Label htmlFor="whatsapp">رقم الواتساب</Label>
           <Input id="whatsapp" placeholder="+963912345678" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
-          <p className="text-xs text-muted-foreground">Include country code. Customers will use this to order.</p>
+          <p className="text-xs text-muted-foreground">أضف رمز الدولة. سيستخدمه الزبائن للطلب.</p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Settings
+          حفظ الإعدادات
         </Button>
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h2 className="font-semibold">Your Public Store Link</h2>
-        <p className="text-sm text-muted-foreground">Share this link with customers so they can browse your products.</p>
+        <h2 className="font-semibold">رابط متجرك العام</h2>
+        <p className="text-sm text-muted-foreground">شارك هذا الرابط مع الزبائن لتصفح منتجاتك.</p>
         <div className="flex items-center gap-2">
           <Input readOnly value={user ? `${window.location.origin}/s/${user.id}` : ""} className="text-xs" />
           <Button variant="outline" size="sm" onClick={handleCopyLink} className="shrink-0 gap-1.5">
             {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-            {linkCopied ? "Copied" : "Copy"}
+            {linkCopied ? "تم النسخ" : "نسخ"}
           </Button>
         </div>
       </Card>
