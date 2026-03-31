@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { Sparkles, Facebook, Copy, Check, Loader2 } from "lucide-react";
+import { Sparkles, Facebook, Copy, Check, Loader2, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
+const MOCK_MERCHANT_ID = "00000000-0000-0000-0000-000000000001";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
   const [generated, setGenerated] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const { toast } = useToast();
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -66,11 +70,30 @@ const AIMarketerPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyStoreLink = () => {
+    const link = `${window.location.origin}/s/${MOCK_MERCHANT_ID}`;
+    navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    toast({ title: "تم نسخ رابط المتجر! ✅" });
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-display font-bold">AI Marketer</h1>
-        <p className="text-sm text-muted-foreground">Generate ads for your products instantly using AI</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold">AI Marketer</h1>
+          <p className="text-sm text-muted-foreground">Generate ads for your products instantly using AI</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={handleCopyStoreLink}
+        >
+          {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+          {linkCopied ? "تم النسخ" : "نسخ رابط المتجر"}
+        </Button>
       </div>
 
       <Card className="p-4 space-y-4">
