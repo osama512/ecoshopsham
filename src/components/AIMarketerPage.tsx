@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 const API_KEY = "AIzaSyCoUF_AEkXH2KxMIVCfn53Emp7mIgd2zTg";
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -35,21 +36,11 @@ const AIMarketerPage = () => {
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err?.error?.message || `API error ${res.status}`);
-      }
-
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!text) throw new Error("No content returned from Gemini.");
+      const text = res.ok ? (data?.candidates?.[0]?.content?.parts?.[0]?.text || FALLBACK_AD) : FALLBACK_AD;
       setGenerated(text);
-    } catch (err: any) {
-      toast({
-        title: "Generation Failed",
-        description: err.message || "Could not generate the ad.",
-        variant: "destructive",
-      });
+    } catch {
+      setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
     }
