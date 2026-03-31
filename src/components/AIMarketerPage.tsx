@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = `You are a professional Syrian marketing expert. Write a Facebook ad in the local Syrian dialect (White dialect/Damascene/Aleppine style). Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp.`;
+const API_KEY = "AIzaSyCoUF_AEkXH2KxMIVCfn53Emp7mIgd2zTg";
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -21,53 +21,32 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      const apiKey = "AIzaSyCoUF_AEkXH2KxMIVCfn53Emp7mIgd2zTg";
-
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        systemInstruction: SYSTEM_PROMPT,
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: "You are a professional Syrian marketer. Write a Facebook ad in Syrian dialect. Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp." }],
+          },
+          contents: [
+            { role: "user", parts: [{ text: `Write a Facebook ad for this product:\n\n${input.trim()}` }] },
+          ],
+        }),
       });
 
-      const maxRetries = 2;
-      let attempt = 0;
-      let success = false;
-
-      while (attempt <= maxRetries && !success) {
-        try {
-          const result = await model.generateContentStream(
-            `Write a Facebook ad for this product:\n\n${input.trim()}`
-          );
-
-          let fullText = "";
-          for await (const chunk of result.stream) {
-            const text = chunk.text();
-            if (text) {
-              fullText += text;
-              setGenerated(fullText);
-            }
-          }
-          success = true;
-        } catch (retryErr: any) {
-          if (retryErr?.status === 429 && attempt < maxRetries) {
-            attempt++;
-            toast({
-              title: `⏳ Rate limited — retrying in 30s (attempt ${attempt}/${maxRetries})`,
-              description: "Google API quota exceeded. Waiting before retry...",
-            });
-            await new Promise((r) => setTimeout(r, 30000));
-          } else {
-            throw retryErr;
-          }
-        }
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error?.message || `API error ${res.status}`);
       }
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!text) throw new Error("No content returned from Gemini.");
+      setGenerated(text);
     } catch (err: any) {
-      const isQuota = err?.status === 429 || err?.message?.includes("quota");
       toast({
-        title: isQuota ? "⚠️ API Quota Exceeded" : "Generation Failed",
-        description: isQuota
-          ? "Your Gemini API free tier quota is exhausted. Wait a minute or upgrade your Google AI plan."
-          : err.message || "Could not generate the ad. Please try again.",
+        title: "Generation Failed",
+        description: err.message || "Could not generate the ad.",
         variant: "destructive",
       });
     } finally {
@@ -96,7 +75,7 @@ const AIMarketerPage = () => {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. Aleppo Soap — traditional handmade olive oil soap from Syria..."
+          placeholder="e.g. صابون حلبي طبيعي بزيت الزيتون..."
           rows={4}
           className="resize-none"
           disabled={loading}
@@ -106,11 +85,7 @@ const AIMarketerPage = () => {
           disabled={!input.trim() || loading}
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold"
         >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Facebook className="h-4 w-4" />
-          )}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
           {loading ? "Generating..." : "Generate Facebook Ad"}
         </Button>
       </Card>
@@ -122,21 +97,12 @@ const AIMarketerPage = () => {
               <Sparkles className="h-4 w-4 text-secondary" />
               Generated Ad
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopy}
-              className="gap-1.5 text-xs h-8"
-              disabled={loading}
-            >
+            <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5 text-xs h-8">
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? "Copied!" : "Copy"}
             </Button>
           </div>
-          <p className="text-sm whitespace-pre-line leading-relaxed" dir="auto">
-            {generated}
-            {loading && <span className="inline-block w-1.5 h-4 bg-secondary/60 animate-pulse ml-0.5 align-text-bottom" />}
-          </p>
+          <p className="text-sm whitespace-pre-line leading-relaxed" dir="auto">{generated}</p>
         </Card>
       )}
     </div>
