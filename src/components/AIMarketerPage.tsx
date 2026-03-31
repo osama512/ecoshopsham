@@ -21,10 +21,7 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY is not configured. Please add it in Lovable Settings → Secrets.");
-      }
+      const apiKey = "AIzaSyCoUF_AEkXH2KxMIVCfn53Emp7mIgd2zTg";
 
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
