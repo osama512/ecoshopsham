@@ -210,6 +210,7 @@ const DashboardProducts = () => {
                     </>
                   )}
                 </div>
+              </div>
               <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {editingProduct ? "Save Changes" : "Add Product"}
