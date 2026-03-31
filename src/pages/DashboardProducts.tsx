@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Package, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -23,6 +23,9 @@ const DashboardProducts = () => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = async () => {
     if (!user) return;
@@ -50,6 +53,8 @@ const DashboardProducts = () => {
     setPrice("");
     setDescription("");
     setEditingProduct(null);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const openEdit = (product: Product) => {
@@ -57,7 +62,33 @@ const DashboardProducts = () => {
     setName(product.name);
     setPrice(String(product.price));
     setDescription(product.description || "");
+    setImageFile(null);
+    setImagePreview(product.image_url || null);
     setOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 5MB", variant: "destructive" });
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const ext = file.name.split(".").pop();
+    const filePath = `${user!.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(filePath, file);
+    if (error) {
+      console.error("Upload error:", error);
+      toast({ title: "Image upload failed", description: error.message, variant: "destructive" });
+      return null;
+    }
+    const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   const handleSave = async () => {
@@ -67,14 +98,24 @@ const DashboardProducts = () => {
     }
 
     setSaving(true);
+
+    let imageUrl: string | null | undefined = undefined;
+    if (imageFile) {
+      const url = await uploadImage(imageFile);
+      if (url) imageUrl = url;
+      else { setSaving(false); return; }
+    }
+
     if (editingProduct) {
-      const { error } = await (supabase
-        .from("products") as any)
-        .update({
-          name: name.trim(),
-          price: parseFloat(price),
-          description: description.trim() || null,
-        })
+      const updateData: Record<string, unknown> = {
+        name: name.trim(),
+        price: parseFloat(price),
+        description: description.trim() || null,
+      };
+      if (imageUrl !== undefined) updateData.image_url = imageUrl;
+
+      const { error } = await (supabase.from("products") as any)
+        .update(updateData)
         .eq("id", editingProduct.id);
 
       if (error) {
@@ -88,6 +129,7 @@ const DashboardProducts = () => {
         price: parseFloat(price),
         description: description.trim() || null,
         merchant_id: user.id,
+        ...(imageUrl ? { image_url: imageUrl } : {}),
       } as any);
 
       if (error) {
@@ -145,6 +187,29 @@ const DashboardProducts = () => {
               <div className="space-y-2">
                 <Label htmlFor="desc">Description</Label>
                 <Textarea id="desc" placeholder="Describe your product..." rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Product Image</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="cursor-pointer border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/50 transition-colors"
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-md" />
+                  ) : (
+                    <>
+                      <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
+                      <span className="text-xs text-muted-foreground">Click to upload image (max 5MB)</span>
+                    </>
+                  )}
+                </div>
               </div>
               <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
