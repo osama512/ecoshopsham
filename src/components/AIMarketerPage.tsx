@@ -3,10 +3,8 @@ import { Sparkles, Facebook, Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-const API_KEY = "AIzaSyCoUF_AEkXH2KxMIVCfn53Emp7mIgd2zTg";
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 
 const AIMarketerPage = () => {
@@ -14,7 +12,6 @@ const AIMarketerPage = () => {
   const [generated, setGenerated] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -22,27 +19,18 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     try {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: "You are a professional Syrian marketer. Write a Facebook ad in Syrian dialect. Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp.\n\nWrite a Facebook ad for this product:\n\n" + input.trim() },
-              ],
-            },
-          ],
-        }),
+      const { data, error } = await supabase.functions.invoke("syriabiz-ai", {
+        body: { productDescription: input.trim() },
       });
 
-      const data = await res.json();
-      console.log("Gemini API response:", data);
-      if (!res.ok) console.error("Gemini API error:", res.status, data);
-      const text = res.ok ? (data?.candidates?.[0]?.content?.parts?.[0]?.text || FALLBACK_AD) : FALLBACK_AD;
-      setGenerated(text);
-    } catch (error) {
-      console.error("Gemini fetch error:", error);
+      if (error) {
+        console.error("Edge function error:", error);
+        setGenerated(FALLBACK_AD);
+      } else {
+        setGenerated(data?.ad || FALLBACK_AD);
+      }
+    } catch (err) {
+      console.error("Invoke error:", err);
       setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
@@ -81,11 +69,18 @@ const AIMarketerPage = () => {
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
-          {loading ? "Generating..." : "Generate Facebook Ad"}
+          {loading ? "عم يجهزلك الإعلان..." : "Generate Facebook Ad"}
         </Button>
       </Card>
 
-      {generated && (
+      {loading && (
+        <Card className="p-4 flex items-center justify-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm font-medium">الذكاء الاصطناعي عم يكتبلك إعلان نار... 🔥</span>
+        </Card>
+      )}
+
+      {generated && !loading && (
         <Card className="p-4 space-y-3 border-secondary/30 bg-secondary/5">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-sm flex items-center gap-2">
