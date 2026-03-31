@@ -72,7 +72,7 @@ const AIMarketerPage = () => {
   };
 
   const handleCopyStoreLink = () => {
-    const link = `${window.location.origin}/s/${MOCK_MERCHANT_ID}`;
+    const link = `${window.location.origin}/s/${user?.id || "store"}`;
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
     toast({ title: "تم نسخ رابط المتجر! ✅" });
