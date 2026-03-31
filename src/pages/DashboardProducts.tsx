@@ -53,6 +53,8 @@ const DashboardProducts = () => {
     setPrice("");
     setDescription("");
     setEditingProduct(null);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const openEdit = (product: Product) => {
