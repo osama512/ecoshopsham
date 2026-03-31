@@ -12,6 +12,8 @@ const Storefront = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeName, setStoreName] = useState("SyriaBiz Store");
+  const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
 
   useEffect(() => {
     const fetchProducts = async () => {
