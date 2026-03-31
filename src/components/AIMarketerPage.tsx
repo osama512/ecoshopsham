@@ -25,12 +25,12 @@ const AIMarketerPage = () => {
       abortRef.current = new AbortController();
 
       const resp = await fetch(
-        `${(supabase as any).supabaseUrl}/functions/v1/generate-ad`,
+        `${FUNCTIONS_URL}/generate-ad`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(supabase as any).supabaseKey}`,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
           },
           body: JSON.stringify({ productDescription: input.trim() }),
           signal: abortRef.current.signal,
