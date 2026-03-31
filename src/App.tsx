@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -12,6 +13,9 @@ import DashboardProducts from "./pages/DashboardProducts";
 import DashboardOrders from "./pages/DashboardOrders";
 import DashboardAI from "./pages/DashboardAI";
 import DashboardSettings from "./pages/DashboardSettings";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminOverview from "./pages/AdminOverview";
+import AdminMerchants from "./pages/AdminMerchants";
 import Storefront from "./pages/Storefront";
 import NotFound from "./pages/NotFound";
 
@@ -42,6 +46,17 @@ const App = () => (
               <Route path="orders" element={<DashboardOrders />} />
               <Route path="ai" element={<DashboardAI />} />
               <Route path="settings" element={<DashboardSettings />} />
+            </Route>
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            >
+              <Route index element={<AdminOverview />} />
+              <Route path="merchants" element={<AdminMerchants />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
