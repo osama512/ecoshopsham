@@ -31,10 +31,17 @@ const AIMarketerPage = () => {
         let adText = FALLBACK_AD;
         try {
           const parsed = typeof data === "string" ? JSON.parse(data) : data;
-          adText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || parsed?.ad || (typeof parsed === "string" ? parsed : FALLBACK_AD);
+          console.log("Parsed Gemini response:", parsed);
+          const extracted = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (extracted && extracted.trim().length > 0) {
+            adText = extracted.trim();
+          } else if (typeof parsed === "string" && parsed.trim().length > 0) {
+            adText = parsed.trim();
+          }
         } catch {
-          // If it's already plain text
-          adText = typeof data === "string" && data.length > 0 ? data : FALLBACK_AD;
+          if (typeof data === "string" && data.trim().length > 0) {
+            adText = data.trim();
+          }
         }
         setGenerated(adText);
       }
