@@ -116,25 +116,37 @@ const DashboardProducts = () => {
         description: description.trim() || null,
       };
       if (imageUrl !== undefined) updateData.image_url = imageUrl;
+      console.log("Updating product:", editingProduct.id, updateData);
 
-      const { error } = await (supabase.from("products") as any)
+      const { data: updatedRows, error } = await (supabase.from("products") as any)
         .update(updateData)
-        .eq("id", editingProduct.id);
+        .eq("id", editingProduct.id)
+        .select();
 
+      console.log("Update result:", { updatedRows, error });
       if (error) {
         toast({ title: "Error updating", description: error.message, variant: "destructive" });
+      } else if (!updatedRows || updatedRows.length === 0) {
+        console.error("RLS blocked update — 0 rows affected. Check your UPDATE policy on products table.");
+        toast({ title: "Update blocked", description: "RLS policy prevented the update. Check Supabase policies.", variant: "destructive" });
       } else {
         toast({ title: "Product updated!" });
       }
     } else {
-      const { error } = await supabase.from("products").insert({
+      const insertData = {
         name: name.trim(),
         price: parseFloat(price),
         description: description.trim() || null,
         merchant_id: user.id,
         ...(imageUrl ? { image_url: imageUrl } : {}),
-      } as any);
+      };
+      console.log("Inserting product:", insertData);
 
+      const { data: insertedRows, error } = await (supabase.from("products") as any)
+        .insert(insertData)
+        .select();
+
+      console.log("Insert result:", { insertedRows, error });
       if (error) {
         toast({ title: "Error adding", description: error.message, variant: "destructive" });
       } else {
