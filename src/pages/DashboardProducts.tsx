@@ -68,13 +68,13 @@ const DashboardProducts = () => {
 
     setSaving(true);
     if (editingProduct) {
-      const { error } = await supabase
-        .from("products")
+      const { error } = await (supabase
+        .from("products") as any)
         .update({
           name: name.trim(),
           price: parseFloat(price),
           description: description.trim() || null,
-        } as any)
+        })
         .eq("id", editingProduct.id);
 
       if (error) {
