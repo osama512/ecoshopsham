@@ -1,6 +1,11 @@
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Clock, CheckCircle2, Truck, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Clock, CheckCircle2, Truck, XCircle, Loader2, ShoppingBag } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Order } from "@/integrations/supabase/db-types";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   pending: { label: "Pending", className: "bg-warning/15 text-warning border-warning/30", icon: Clock },
@@ -9,53 +14,91 @@ const statusConfig: Record<string, { label: string; className: string; icon: Rea
   cancelled: { label: "Cancelled", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
 };
 
-const mockOrders = [
-  { id: "ORD-001", customer: "Ahmad Khalil", items: 3, total: 15200, status: "pending", date: "Today, 2:30 PM" },
-  { id: "ORD-002", customer: "Fatima Hassan", items: 1, total: 35000, status: "processing", date: "Today, 11:00 AM" },
-  { id: "ORD-003", customer: "Omar Yousef", items: 5, total: 28500, status: "completed", date: "Yesterday" },
-  { id: "ORD-004", customer: "Layla Mahmoud", items: 2, total: 9700, status: "completed", date: "Yesterday" },
-  { id: "ORD-005", customer: "Khaled Nour", items: 1, total: 4500, status: "cancelled", date: "Mar 28" },
-  { id: "ORD-006", customer: "Sara Deeb", items: 4, total: 42000, status: "pending", date: "Mar 28" },
-];
-
 const OrdersPage = () => {
-  const pendingCount = mockOrders.filter(o => o.status === "pending").length;
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast({ title: "Error fetching orders", description: error.message, variant: "destructive" });
+      } else {
+        setOrders(data ?? []);
+      }
+      setLoading(false);
+    };
+
+    fetchOrders();
+  }, []);
+
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), "MMM d, h:mm a");
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getItemCount = (details: unknown): number => {
+    if (Array.isArray(details)) return details.length;
+    return 0;
+  };
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-display font-bold">Orders</h1>
-        <p className="text-sm text-muted-foreground">{pendingCount} pending · {mockOrders.length} total</p>
+        <p className="text-sm text-muted-foreground">{pendingCount} pending · {orders.length} total</p>
       </div>
 
-      <div className="space-y-3">
-        {mockOrders.map((order) => {
-          const config = statusConfig[order.status];
-          const StatusIcon = config.icon;
-          return (
-            <Card key={order.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{order.customer}</span>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <ShoppingBag className="h-12 w-12 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">No orders yet</p>
+          <p className="text-sm">Orders will appear here</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order) => {
+            const config = statusConfig[order.status] ?? statusConfig.pending;
+            const StatusIcon = config.icon;
+            const itemCount = getItemCount(order.order_details);
+            return (
+              <Card key={order.id} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <span className="font-semibold">{order.customer_name}</span>
+                    <p className="text-xs text-muted-foreground">
+                      {itemCount} item{itemCount !== 1 ? "s" : ""} · {formatDate(order.created_at)}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {order.id} · {order.items} item{order.items > 1 ? "s" : ""} · {order.date}
-                  </p>
+                  <Badge variant="outline" className={`${config.className} gap-1 text-[11px] font-medium`}>
+                    <StatusIcon className="h-3 w-3" />
+                    {config.label}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className={`${config.className} gap-1 text-[11px] font-medium`}>
-                  <StatusIcon className="h-3 w-3" />
-                  {config.label}
-                </Badge>
-              </div>
-              <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Total</span>
-                <span className="font-display font-bold">{order.total.toLocaleString()} SYP</span>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+                <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Total</span>
+                  <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} SYP</span>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
