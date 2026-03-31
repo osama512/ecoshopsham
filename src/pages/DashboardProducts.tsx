@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Package, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -23,6 +23,9 @@ const DashboardProducts = () => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = async () => {
     if (!user) return;
