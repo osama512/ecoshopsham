@@ -16,6 +16,7 @@ const AIMarketerPage = () => {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
