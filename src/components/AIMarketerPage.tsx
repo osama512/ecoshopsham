@@ -25,26 +25,49 @@ const AIMarketerPage = () => {
 
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         systemInstruction: SYSTEM_PROMPT,
       });
 
-      const result = await model.generateContentStream(
-        `Write a Facebook ad for this product:\n\n${input.trim()}`
-      );
+      const maxRetries = 2;
+      let attempt = 0;
+      let success = false;
 
-      let fullText = "";
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (text) {
-          fullText += text;
-          setGenerated(fullText);
+      while (attempt <= maxRetries && !success) {
+        try {
+          const result = await model.generateContentStream(
+            `Write a Facebook ad for this product:\n\n${input.trim()}`
+          );
+
+          let fullText = "";
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              fullText += text;
+              setGenerated(fullText);
+            }
+          }
+          success = true;
+        } catch (retryErr: any) {
+          if (retryErr?.status === 429 && attempt < maxRetries) {
+            attempt++;
+            toast({
+              title: `⏳ Rate limited — retrying in 30s (attempt ${attempt}/${maxRetries})`,
+              description: "Google API quota exceeded. Waiting before retry...",
+            });
+            await new Promise((r) => setTimeout(r, 30000));
+          } else {
+            throw retryErr;
+          }
         }
       }
     } catch (err: any) {
+      const isQuota = err?.status === 429 || err?.message?.includes("quota");
       toast({
-        title: "Generation Failed",
-        description: err.message || "Could not generate the ad. Please try again.",
+        title: isQuota ? "⚠️ API Quota Exceeded" : "Generation Failed",
+        description: isQuota
+          ? "Your Gemini API free tier quota is exhausted. Wait a minute or upgrade your Google AI plan."
+          : err.message || "Could not generate the ad. Please try again.",
         variant: "destructive",
       });
     } finally {
