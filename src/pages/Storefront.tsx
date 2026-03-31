@@ -48,8 +48,9 @@ const Storefront = () => {
   }, [storeId]);
 
   const getWhatsAppLink = (productName: string) => {
+    const num = whatsapp.replace(/[^0-9]/g, "");
     const message = encodeURIComponent(`مرحباً، أريد طلب ${productName} من متجركم.`);
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+    return `https://wa.me/${num}?text=${message}`;
   };
 
   return (
