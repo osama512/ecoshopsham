@@ -25,11 +25,12 @@ const AIMarketerPage = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: "You are a professional Syrian marketer. Write a Facebook ad in Syrian dialect. Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp." }],
-          },
           contents: [
-            { role: "user", parts: [{ text: `Write a Facebook ad for this product:\n\n${input.trim()}` }] },
+            {
+              parts: [
+                { text: "You are a professional Syrian marketer. Write a Facebook ad in Syrian dialect. Use catchy local slang like (يا أكابر، عروض نار، خامة بتجنن، سعر لقطة). Avoid formal Arabic. Use emojis and include a call to action to order via WhatsApp.\n\nWrite a Facebook ad for this product:\n\n" + input.trim() },
+              ],
+            },
           ],
         }),
       });
