@@ -41,7 +41,8 @@ const AIMarketerPage = () => {
       if (!res.ok) console.error("Gemini API error:", res.status, data);
       const text = res.ok ? (data?.candidates?.[0]?.content?.parts?.[0]?.text || FALLBACK_AD) : FALLBACK_AD;
       setGenerated(text);
-    } catch {
+    } catch (error) {
+      console.error("Gemini fetch error:", error);
       setGenerated(FALLBACK_AD);
     } finally {
       setLoading(false);
