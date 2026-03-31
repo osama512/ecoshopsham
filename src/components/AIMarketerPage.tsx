@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { Sparkles, Facebook, Copy, Check, Loader2 } from "lucide-react";
+import { Sparkles, Facebook, Copy, Check, Loader2, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
+const MOCK_MERCHANT_ID = "00000000-0000-0000-0000-000000000001";
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
   const [generated, setGenerated] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const { toast } = useToast();
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
