@@ -59,7 +59,7 @@ const ProductsPage = () => {
       price: parseFloat(price),
       description: description.trim() || null,
       merchant_id: MOCK_MERCHANT_ID,
-    });
+    } as any);
 
     if (error) {
       toast({ title: "Error adding product", description: error.message, variant: "destructive" });
