@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Link2, Check } from "lucide-react";
+import CheckoutSettings from "@/components/CheckoutSettings";
 
 const DashboardSettings = () => {
   const { user } = useAuth();
@@ -107,6 +109,10 @@ const DashboardSettings = () => {
           </Button>
         </div>
       </Card>
+
+      <Separator />
+
+      <CheckoutSettings />
     </div>
   );
 };
