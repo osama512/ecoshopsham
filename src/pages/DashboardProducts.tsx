@@ -180,14 +180,25 @@ const DashboardProducts = () => {
 
   return (
     <div className="space-y-4">
+      {atLimit && (
+        <Alert className="border-destructive/50 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-sm font-medium">
+            لقد وصلت للحد الأقصى للباقة المجانية ({FREE_PLAN_LIMIT} منتجات). يرجى الترقية لإضافة المزيد.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold">المنتجات</h1>
-          <p className="text-sm text-muted-foreground">{products.length} منتج مدرج</p>
+          <p className="text-sm text-muted-foreground">{products.length} / {isFreePlan ? FREE_PLAN_LIMIT : "∞"} منتج</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-full gap-1.5 font-semibold shadow-lg shadow-secondary/25">
+            <Button
+              disabled={atLimit && !editingProduct}
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-full gap-1.5 font-semibold shadow-lg shadow-secondary/25"
+            >
               <Plus className="h-4 w-4" />
               إضافة منتج
             </Button>

@@ -152,11 +152,25 @@ const AdminMerchants = () => {
             <Card key={m.id + "-mobile"} className="p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-sm">{m.store_name || "—"}</span>
-                <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
-                  {isSuspended ? "موقوف" : "نشط"}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={m.plan_type === "pro" ? "default" : "secondary"} className="text-xs">
+                    {m.plan_type === "pro" ? "Pro" : "مجانية"}
+                  </Badge>
+                  <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
+                    {isSuspended ? "موقوف" : "نشط"}
+                  </Badge>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground font-mono">{m.whatsapp_number || "—"}</p>
+              <Select value={m.plan_type || "free"} onValueChange={(val) => updatePlan(m.id, val)}>
+                <SelectTrigger className="w-full h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">مجانية</SelectItem>
+                  <SelectItem value="pro">Pro ⭐</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString("ar-SY")}</span>
                 <Button

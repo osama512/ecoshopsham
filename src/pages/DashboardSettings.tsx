@@ -113,6 +113,23 @@ const DashboardSettings = () => {
         </div>
       </Card>
 
+      <Card className="p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold flex items-center gap-2">
+            {planType === "pro" ? <Crown className="h-4 w-4 text-yellow-500" /> : <Sparkles className="h-4 w-4 text-muted-foreground" />}
+            باقة الاشتراك
+          </h2>
+          <Badge variant={planType === "pro" ? "default" : "secondary"} className="text-sm px-3 py-1">
+            {planType === "pro" ? "Pro ⭐" : "مجانية"}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {planType === "pro"
+            ? "أنت على الباقة الاحترافية — منتجات غير محدودة ومزايا متقدمة."
+            : "الباقة المجانية — حتى 10 منتجات. تواصل مع الإدارة للترقية."}
+        </p>
+      </Card>
+
       <Separator />
 
       <CheckoutSettings />
