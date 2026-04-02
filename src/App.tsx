@@ -14,6 +14,7 @@ import DashboardOrders from "./pages/DashboardOrders";
 import DashboardAI from "./pages/DashboardAI";
 import DashboardSettings from "./pages/DashboardSettings";
 import DashboardAnalytics from "./pages/DashboardAnalytics";
+import DashboardMarketing from "./pages/DashboardMarketing";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminOverview from "./pages/AdminOverview";
 import AdminMerchants from "./pages/AdminMerchants";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="orders" element={<DashboardOrders />} />
               <Route path="ai" element={<DashboardAI />} />
               <Route path="analytics" element={<DashboardAnalytics />} />
+              <Route path="marketing" element={<DashboardMarketing />} />
               <Route path="settings" element={<DashboardSettings />} />
             </Route>
             <Route
