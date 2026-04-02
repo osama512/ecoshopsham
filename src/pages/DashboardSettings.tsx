@@ -109,6 +109,10 @@ const DashboardSettings = () => {
           </Button>
         </div>
       </Card>
+
+      <Separator />
+
+      <CheckoutSettings />
     </div>
   );
 };
