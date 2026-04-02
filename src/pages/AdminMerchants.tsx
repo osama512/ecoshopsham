@@ -37,6 +37,19 @@ const AdminMerchants = () => {
     fetchMerchants();
   }, []);
 
+  const updatePlan = async (merchantId: string, newPlan: string) => {
+    const { error } = await (supabase
+      .from("profiles" as any) as any)
+      .update({ plan_type: newPlan } as any)
+      .eq("id", merchantId);
+    if (error) {
+      toast({ title: "خطأ في تحديث الباقة", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: newPlan === "pro" ? "تمت الترقية إلى Pro ⭐" : "تم التخفيض إلى المجانية" });
+      fetchMerchants();
+    }
+  };
+
   const toggleStatus = async (merchant: MerchantProfile) => {
     setTogglingId(merchant.id);
     const newStatus = (merchant.status || "active") === "active" ? "suspended" : "active";
