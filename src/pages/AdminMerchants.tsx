@@ -87,6 +87,7 @@ const AdminMerchants = () => {
             <TableRow>
               <TableHead>اسم المتجر</TableHead>
               <TableHead>واتساب</TableHead>
+              <TableHead>الباقة</TableHead>
               <TableHead>الحالة</TableHead>
               <TableHead>تاريخ الانضمام</TableHead>
               <TableHead>إجراء</TableHead>
