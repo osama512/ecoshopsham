@@ -1,5 +1,5 @@
 import { Outlet, useLocation, Link } from "react-router-dom";
-import { Package, ShoppingCart, Sparkles, Settings, LogOut, Shield } from "lucide-react";
+import { Package, ShoppingCart, Sparkles, Settings, LogOut, Shield, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const navItems = [
   { title: "المنتجات", url: "/dashboard/products", icon: Package },
   { title: "الطلبات", url: "/dashboard/orders", icon: ShoppingCart },
   { title: "المسوّق الذكي", url: "/dashboard/ai", icon: Sparkles },
+  { title: "إحصائيات", url: "/dashboard/analytics", icon: BarChart3 },
   { title: "الإعدادات", url: "/dashboard/settings", icon: Settings },
 ];
 
