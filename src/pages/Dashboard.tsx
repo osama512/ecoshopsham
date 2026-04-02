@@ -22,6 +22,7 @@ const navItems = [
   { title: "الطلبات", url: "/dashboard/orders", icon: ShoppingCart },
   { title: "المسوّق الذكي", url: "/dashboard/ai", icon: Sparkles },
   { title: "إحصائيات", url: "/dashboard/analytics", icon: BarChart3 },
+  { title: "تسويق", url: "/dashboard/marketing", icon: Megaphone },
   { title: "الإعدادات", url: "/dashboard/settings", icon: Settings },
 ];
 
