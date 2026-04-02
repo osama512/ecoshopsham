@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
+import OrderFormModal from "@/components/OrderFormModal";
 
 const DEFAULT_WHATSAPP = "963954170549";
 
@@ -15,6 +16,7 @@ const Storefront = () => {
   const [storeName, setStoreName] = useState("SyriaBiz Store");
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
   const [suspended, setSuspended] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -51,20 +53,12 @@ const Storefront = () => {
     if (storeId) fetchStore();
   }, [storeId]);
 
-  const getWhatsAppLink = (productName: string) => {
-    const num = whatsapp.replace(/[^0-9]/g, "");
-    const message = encodeURIComponent(`مرحباً، أريد طلب ${productName} من متجركم.`);
-    return `https://wa.me/${num}?text=${message}`;
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b px-4 py-4 text-center">
         <div className="flex items-center justify-center gap-2">
           <Store className="h-5 w-5 text-secondary" />
-          <h1 className="text-lg font-display font-bold tracking-tight">
-            {storeName}
-          </h1>
+          <h1 className="text-lg font-display font-bold tracking-tight">{storeName}</h1>
         </div>
         <p className="text-xs text-muted-foreground mt-1">تصفّح المنتجات واطلب مباشرة</p>
       </header>
@@ -93,12 +87,7 @@ const Storefront = () => {
               <Card key={product.id} className="overflow-hidden flex flex-col">
                 <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                   {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <Package className="h-10 w-10 text-muted-foreground/40" />
                   )}
@@ -111,15 +100,14 @@ const Storefront = () => {
                   <span className="font-display font-bold text-sm text-secondary mt-auto">
                     {Number(product.price).toLocaleString()} ل.س
                   </span>
-                  <a href={getWhatsAppLink(product.name)} target="_blank" rel="noopener noreferrer">
-                    <Button
-                      className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1.5 text-xs font-semibold"
-                      size="sm"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      اطلب عبر واتساب
-                    </Button>
-                  </a>
+                  <Button
+                    className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1.5 text-xs font-semibold"
+                    size="sm"
+                    onClick={() => setSelectedProduct(product)}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    اطلب عبر واتساب
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -130,6 +118,16 @@ const Storefront = () => {
       <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-8">
         مدعوم من Syria<span className="text-secondary font-semibold">Biz</span>
       </footer>
+
+      {selectedProduct && storeId && (
+        <OrderFormModal
+          open={!!selectedProduct}
+          onOpenChange={(v) => { if (!v) setSelectedProduct(null); }}
+          product={selectedProduct}
+          merchantId={storeId}
+          whatsapp={whatsapp}
+        />
+      )}
     </div>
   );
 };
