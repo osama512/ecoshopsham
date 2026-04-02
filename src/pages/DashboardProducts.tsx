@@ -13,8 +13,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Product } from "@/integrations/supabase/db-types";
 import { useToast } from "@/hooks/use-toast";
 
+const FREE_PLAN_LIMIT = 10;
+
 const DashboardProducts = () => {
   const { user } = useAuth();
+  const [planType, setPlanType] = useState<string>("free");
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
