@@ -34,6 +34,7 @@ const DashboardSettings = () => {
       if (!error && data) {
         setStoreName((data as any).store_name || "");
         setWhatsapp((data as any).whatsapp_number || "");
+        setPlanType((data as any).plan_type || "free");
       }
       setLoading(false);
     };
