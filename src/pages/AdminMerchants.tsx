@@ -102,6 +102,20 @@ const AdminMerchants = () => {
                   <TableCell className="font-medium">{m.store_name || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{m.whatsapp_number || "—"}</TableCell>
                   <TableCell>
+                    <Select
+                      value={m.plan_type || "free"}
+                      onValueChange={(val) => updatePlan(m.id, val)}
+                    >
+                      <SelectTrigger className="w-24 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">مجانية</SelectItem>
+                        <SelectItem value="pro">Pro ⭐</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
                       {isSuspended ? "موقوف" : "نشط"}
                     </Badge>
