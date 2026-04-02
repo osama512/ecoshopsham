@@ -48,9 +48,23 @@ const DashboardProducts = () => {
     setLoading(false);
   };
 
+  const fetchPlan = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("plan_type")
+      .eq("id", user.id)
+      .single();
+    if (data) setPlanType((data as any).plan_type || "free");
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchPlan();
   }, [user]);
+
+  const isFreePlan = planType === "free";
+  const atLimit = isFreePlan && products.length >= FREE_PLAN_LIMIT;
 
   const resetForm = () => {
     setName("");
