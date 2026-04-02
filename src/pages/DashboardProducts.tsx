@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus } from "lucide-react";
+import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,8 +13,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Product } from "@/integrations/supabase/db-types";
 import { useToast } from "@/hooks/use-toast";
 
+const FREE_PLAN_LIMIT = 10;
+
 const DashboardProducts = () => {
   const { user } = useAuth();
+  const [planType, setPlanType] = useState<string>("free");
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -44,9 +48,23 @@ const DashboardProducts = () => {
     setLoading(false);
   };
 
+  const fetchPlan = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("plan_type")
+      .eq("id", user.id)
+      .single();
+    if (data) setPlanType((data as any).plan_type || "free");
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchPlan();
   }, [user]);
+
+  const isFreePlan = planType === "free";
+  const atLimit = isFreePlan && products.length >= FREE_PLAN_LIMIT;
 
   const resetForm = () => {
     setName("");
@@ -162,14 +180,25 @@ const DashboardProducts = () => {
 
   return (
     <div className="space-y-4">
+      {atLimit && (
+        <Alert className="border-destructive/50 bg-destructive/10">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-sm font-medium">
+            لقد وصلت للحد الأقصى للباقة المجانية ({FREE_PLAN_LIMIT} منتجات). يرجى الترقية لإضافة المزيد.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold">المنتجات</h1>
-          <p className="text-sm text-muted-foreground">{products.length} منتج مدرج</p>
+          <p className="text-sm text-muted-foreground">{products.length} / {isFreePlan ? FREE_PLAN_LIMIT : "∞"} منتج</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-full gap-1.5 font-semibold shadow-lg shadow-secondary/25">
+            <Button
+              disabled={atLimit && !editingProduct}
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-full gap-1.5 font-semibold shadow-lg shadow-secondary/25"
+            >
               <Plus className="h-4 w-4" />
               إضافة منتج
             </Button>

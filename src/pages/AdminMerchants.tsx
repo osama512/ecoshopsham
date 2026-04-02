@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ interface MerchantProfile {
   created_at: string;
   role: string | null;
   status: string | null;
+  plan_type: string | null;
 }
 
 const AdminMerchants = () => {
@@ -34,6 +36,19 @@ const AdminMerchants = () => {
   useEffect(() => {
     fetchMerchants();
   }, []);
+
+  const updatePlan = async (merchantId: string, newPlan: string) => {
+    const { error } = await (supabase
+      .from("profiles" as any) as any)
+      .update({ plan_type: newPlan } as any)
+      .eq("id", merchantId);
+    if (error) {
+      toast({ title: "خطأ في تحديث الباقة", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: newPlan === "pro" ? "تمت الترقية إلى Pro ⭐" : "تم التخفيض إلى المجانية" });
+      fetchMerchants();
+    }
+  };
 
   const toggleStatus = async (merchant: MerchantProfile) => {
     setTogglingId(merchant.id);
@@ -72,6 +87,7 @@ const AdminMerchants = () => {
             <TableRow>
               <TableHead>اسم المتجر</TableHead>
               <TableHead>واتساب</TableHead>
+              <TableHead>الباقة</TableHead>
               <TableHead>الحالة</TableHead>
               <TableHead>تاريخ الانضمام</TableHead>
               <TableHead>إجراء</TableHead>
@@ -85,6 +101,20 @@ const AdminMerchants = () => {
                 <TableRow key={m.id}>
                   <TableCell className="font-medium">{m.store_name || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{m.whatsapp_number || "—"}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={m.plan_type || "free"}
+                      onValueChange={(val) => updatePlan(m.id, val)}
+                    >
+                      <SelectTrigger className="w-24 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">مجانية</SelectItem>
+                        <SelectItem value="pro">Pro ⭐</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
                       {isSuspended ? "موقوف" : "نشط"}
@@ -122,11 +152,25 @@ const AdminMerchants = () => {
             <Card key={m.id + "-mobile"} className="p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-sm">{m.store_name || "—"}</span>
-                <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
-                  {isSuspended ? "موقوف" : "نشط"}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={m.plan_type === "pro" ? "default" : "secondary"} className="text-xs">
+                    {m.plan_type === "pro" ? "Pro" : "مجانية"}
+                  </Badge>
+                  <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
+                    {isSuspended ? "موقوف" : "نشط"}
+                  </Badge>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground font-mono">{m.whatsapp_number || "—"}</p>
+              <Select value={m.plan_type || "free"} onValueChange={(val) => updatePlan(m.id, val)}>
+                <SelectTrigger className="w-full h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">مجانية</SelectItem>
+                  <SelectItem value="pro">Pro ⭐</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString("ar-SY")}</span>
                 <Button

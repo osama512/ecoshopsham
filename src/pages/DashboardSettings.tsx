@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Link2, Check } from "lucide-react";
+import { Loader2, Save, Link2, Check, Crown, Sparkles } from "lucide-react";
 import CheckoutSettings from "@/components/CheckoutSettings";
 
 const DashboardSettings = () => {
@@ -15,6 +16,7 @@ const DashboardSettings = () => {
   const { toast } = useToast();
   const [storeName, setStoreName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [planType, setPlanType] = useState("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -32,6 +34,7 @@ const DashboardSettings = () => {
       if (!error && data) {
         setStoreName((data as any).store_name || "");
         setWhatsapp((data as any).whatsapp_number || "");
+        setPlanType((data as any).plan_type || "free");
       }
       setLoading(false);
     };
@@ -108,6 +111,23 @@ const DashboardSettings = () => {
             {linkCopied ? "تم النسخ" : "نسخ"}
           </Button>
         </div>
+      </Card>
+
+      <Card className="p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold flex items-center gap-2">
+            {planType === "pro" ? <Crown className="h-4 w-4 text-yellow-500" /> : <Sparkles className="h-4 w-4 text-muted-foreground" />}
+            باقة الاشتراك
+          </h2>
+          <Badge variant={planType === "pro" ? "default" : "secondary"} className="text-sm px-3 py-1">
+            {planType === "pro" ? "Pro ⭐" : "مجانية"}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {planType === "pro"
+            ? "أنت على الباقة الاحترافية — منتجات غير محدودة ومزايا متقدمة."
+            : "الباقة المجانية — حتى 10 منتجات. تواصل مع الإدارة للترقية."}
+        </p>
       </Card>
 
       <Separator />
