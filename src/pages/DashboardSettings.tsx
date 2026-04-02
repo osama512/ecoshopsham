@@ -16,6 +16,7 @@ const DashboardSettings = () => {
   const { toast } = useToast();
   const [storeName, setStoreName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [planType, setPlanType] = useState("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
