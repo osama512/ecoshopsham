@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, MessageCircle, Tag, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 
@@ -54,6 +55,12 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
+  // Coupon state
+  const [promoCode, setPromoCode] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null);
+  const [promoError, setPromoError] = useState("");
+
   useEffect(() => {
     if (!open || settingsLoaded) return;
     const fetchSettings = async () => {
@@ -65,7 +72,6 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
       if (data) {
         const d = data as any;
-        // Build active payment methods
         const pm = d.payment_methods as PaymentMethodConfig | null;
         if (pm) {
           const active = Object.entries(pm)
@@ -76,24 +82,19 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
             setPaymentMethod(active[0].value);
           }
         }
-        // Shipping zones
         if (d.shipping_zones && Array.isArray(d.shipping_zones) && d.shipping_zones.length > 0) {
           setShippingZones(d.shipping_zones);
         }
       }
-
-      // Fallback: if no settings found, use all payment methods
       setSettingsLoaded(true);
     };
     fetchSettings();
   }, [open, merchantId, settingsLoaded]);
 
-  // Fallback defaults if merchant has no settings
   const payments = activePayments.length > 0
     ? activePayments
     : Object.entries(ALL_PAYMENT_LABELS).map(([value, label]) => ({ value, label }));
 
-  // Set default payment if not set
   useEffect(() => {
     if (!paymentMethod && payments.length > 0) {
       setPaymentMethod(payments[0].value);
@@ -102,7 +103,30 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
   const selectedShipping = shippingZones.find((z) => z.id === selectedShippingId);
   const shippingCost = selectedShipping?.price ?? 0;
-  const totalPrice = Number(product.price) + shippingCost;
+  const subtotal = Number(product.price) + shippingCost;
+  const discountAmount = appliedCoupon ? Math.round(subtotal * appliedCoupon.discount_percent / 100) : 0;
+  const totalPrice = subtotal - discountAmount;
+
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoChecking(true);
+    setPromoError("");
+    setAppliedCoupon(null);
+
+    const { data, error } = await (supabase.from("coupons") as any)
+      .select("code, discount_percent")
+      .eq("merchant_id", merchantId)
+      .eq("code", promoCode.trim().toUpperCase())
+      .eq("active", true)
+      .maybeSingle();
+
+    setPromoChecking(false);
+    if (error || !data) {
+      setPromoError("رمز الخصم غير صالح");
+      return;
+    }
+    setAppliedCoupon({ code: data.code, discount_percent: data.discount_percent });
+  };
 
   const handleSubmit = async () => {
     if (!fullName.trim() || !city || !address.trim() || !phone.trim()) return;
@@ -120,6 +144,8 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
       customer_phone: phone.trim(),
       shipping_zone: selectedShipping?.name || null,
       shipping_cost: shippingCost,
+      coupon_code: appliedCoupon?.code || null,
+      discount_amount: discountAmount,
     };
 
     const { error } = await (supabase.from("orders") as any).insert({
@@ -145,8 +171,13 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
     if (selectedShipping) {
       message += `🚚 الشحن: ${selectedShipping.name} — ${shippingCost.toLocaleString()} ل.س\n`;
-      message += `💵 الإجمالي: ${totalPrice.toLocaleString()} ل.س\n`;
     }
+
+    if (appliedCoupon) {
+      message += `🏷️ كوبون: ${appliedCoupon.code} (-${appliedCoupon.discount_percent}%) = -${discountAmount.toLocaleString()} ل.س\n`;
+    }
+
+    message += `💵 الإجمالي: ${totalPrice.toLocaleString()} ل.س\n`;
 
     message +=
       `👤 الاسم: ${fullName.trim()}\n` +
@@ -158,13 +189,15 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
     const num = whatsapp.replace(/[^0-9]/g, "");
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, "_blank");
 
-    // Reset
     setFullName("");
     setCity("");
     setAddress("");
     setPhone("");
     setPaymentMethod("");
     setSelectedShippingId("");
+    setPromoCode("");
+    setAppliedCoupon(null);
+    setPromoError("");
     onOpenChange(false);
   };
 
@@ -249,6 +282,41 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
             </RadioGroup>
           </div>
 
+          {/* Promo Code */}
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5" />
+              رمز الخصم (اختياري)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="أدخل رمز الخصم"
+                value={promoCode}
+                onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); setAppliedCoupon(null); }}
+                className="font-mono"
+                maxLength={20}
+                disabled={!!appliedCoupon}
+              />
+              <Button
+                type="button"
+                variant={appliedCoupon ? "secondary" : "outline"}
+                size="sm"
+                onClick={applyPromo}
+                disabled={promoChecking || !!appliedCoupon || !promoCode.trim()}
+                className="shrink-0"
+              >
+                {promoChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : appliedCoupon ? <CheckCircle2 className="h-4 w-4" /> : "تطبيق"}
+              </Button>
+            </div>
+            {promoError && <p className="text-xs text-destructive">{promoError}</p>}
+            {appliedCoupon && (
+              <Badge variant="secondary" className="gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                خصم {appliedCoupon.discount_percent}% — {appliedCoupon.code}
+              </Badge>
+            )}
+          </div>
+
           {/* Order Summary */}
           <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
             <div className="flex justify-between text-sm">
@@ -259,6 +327,12 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
               <div className="flex justify-between text-sm">
                 <span>الشحن ({selectedShipping.name})</span>
                 <span className="font-display font-bold">{shippingCost.toLocaleString()} ل.س</span>
+              </div>
+            )}
+            {appliedCoupon && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>خصم ({appliedCoupon.code})</span>
+                <span className="font-display font-bold">-{discountAmount.toLocaleString()} ل.س</span>
               </div>
             )}
             <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5 mt-1.5">
