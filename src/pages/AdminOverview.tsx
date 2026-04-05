@@ -13,7 +13,7 @@ const AdminOverview = () => {
   useEffect(() => {
     const fetchStats = async () => {
       const [profilesRes, productsRes, ordersRes, pendingRes] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "merchant"),
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
