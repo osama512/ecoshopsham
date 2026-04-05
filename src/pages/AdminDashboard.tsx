@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, LogOut, CreditCard, Trash2 } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, CreditCard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ const navItems = [
   { title: "نظرة عامة", url: "/admin", icon: LayoutDashboard },
   { title: "التجار", url: "/admin/merchants", icon: Users },
   { title: "الباقات", url: "/admin/plans", icon: CreditCard },
-  { title: "إعادة تعيين البيانات", url: "/admin/reset", icon: Trash2 },
 ];
 
 function AdminSidebar() {
