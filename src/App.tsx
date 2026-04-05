@@ -19,7 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminOverview from "./pages/AdminOverview";
 import AdminMerchants from "./pages/AdminMerchants";
 import AdminPlans from "./pages/AdminPlans";
-import AdminReset from "./pages/AdminReset";
+
 import Storefront from "./pages/Storefront";
 import NotFound from "./pages/NotFound";
 
@@ -72,7 +72,7 @@ const App = () => (
               <Route index element={<AdminOverview />} />
               <Route path="merchants" element={<AdminMerchants />} />
               <Route path="plans" element={<AdminPlans />} />
-              <Route path="reset" element={<AdminReset />} />
+              
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
