@@ -75,7 +75,7 @@ const AdminDashboard = () => {
             <SidebarTrigger className="ml-3" />
             <span className="text-sm font-medium text-muted-foreground">لوحة الإدارة</span>
           </header>
-          <main className="flex-1 p-4 md:p-6 max-w-5xl">
+          <main className="flex-1 p-4 md:p-6 w-full">
             <Outlet />
           </main>
         </div>
