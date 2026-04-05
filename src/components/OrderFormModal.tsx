@@ -205,7 +205,12 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
       `💳 الدفع: ${paymentLabel}`;
 
     const num = formatSyrianWhatsApp(whatsapp);
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, "_blank");
+    const encoded = encodeURIComponent(message);
+    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+    const url = isMobile
+      ? `whatsapp://send?phone=${num}&text=${encoded}`
+      : `https://wa.me/${num}?text=${encoded}`;
+    window.open(url, "_blank", "noopener,noreferrer");
 
     setFullName("");
     setCity("");
