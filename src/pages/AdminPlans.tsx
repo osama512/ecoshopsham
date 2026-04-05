@@ -68,7 +68,7 @@ const AdminPlans = () => {
               {plan.features.map((f) => (
                 <li key={f.label} className="flex items-center gap-2 text-sm">
                   {f.included ? (
-                    <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <Check className="h-4 w-4 text-[hsl(var(--success))] shrink-0" />
                   ) : (
                     <X className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                   )}
