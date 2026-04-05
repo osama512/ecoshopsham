@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ const DashboardSettings = () => {
   const { toast } = useToast();
   const [storeName, setStoreName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [paymentInstructions, setPaymentInstructions] = useState("");
   const [planType, setPlanType] = useState("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,6 +37,7 @@ const DashboardSettings = () => {
         setStoreName((data as any).store_name || "");
         setWhatsapp((data as any).whatsapp_number || "");
         setPlanType((data as any).plan_type || "free");
+        setPaymentInstructions((data as any).payment_instructions || "");
       }
       setLoading(false);
     };
@@ -51,6 +54,7 @@ const DashboardSettings = () => {
         id: user.id,
         store_name: storeName.trim(),
         whatsapp_number: whatsapp.trim(),
+        payment_instructions: paymentInstructions.trim(),
         updated_at: new Date().toISOString(),
       } as any);
 
@@ -94,6 +98,17 @@ const DashboardSettings = () => {
           <Label htmlFor="whatsapp">رقم الواتساب</Label>
           <Input id="whatsapp" placeholder="+963912345678" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
           <p className="text-xs text-muted-foreground">أضف رمز الدولة. سيستخدمه الزبائن للطلب.</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="paymentInstructions">معلومات الدفع (سيريتل كاش / الهرم / إلخ)</Label>
+          <Textarea
+            id="paymentInstructions"
+            placeholder="مثال: سيريتل كاش — الرقم: 0988123456&#10;حوالة الهرم — باسم: أحمد محمد — دمشق"
+            value={paymentInstructions}
+            onChange={(e) => setPaymentInstructions(e.target.value)}
+            rows={4}
+          />
+          <p className="text-xs text-muted-foreground">ستظهر هذه المعلومات للزبون عند اختيار طريقة دفع غير نقدية.</p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

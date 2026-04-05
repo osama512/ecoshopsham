@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageCircle, Tag, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, MessageCircle, Tag, CheckCircle2, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 import { formatSyrianWhatsApp, isValidSyrianPhone } from "@/lib/phone";
@@ -25,8 +26,8 @@ interface PaymentMethodConfig {
 
 const ALL_PAYMENT_LABELS: Record<string, string> = {
   cash: "الدفع عند الاستلام",
-  syriatel_cash: "سيريتل كاش",
-  haram_transfer: "حوالة الهرم",
+  syriatel_cash: "سيريتل كاش / MTN كاش",
+  haram_transfer: "تحويل الهرم / الفؤاد",
 };
 
 const SYRIAN_CITIES = [
@@ -54,6 +55,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
   // Dynamic merchant settings
   const [activePayments, setActivePayments] = useState<{ value: string; label: string }[]>([]);
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
+  const [paymentInstructions, setPaymentInstructions] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Coupon state
@@ -65,6 +67,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
   useEffect(() => {
     if (!open || settingsLoaded) return;
     const fetchSettings = async () => {
+      // Fetch store_settings
       const { data } = await supabase
         .from("store_settings" as any)
         .select("*")
@@ -87,6 +90,18 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
           setShippingZones(d.shipping_zones);
         }
       }
+
+      // Fetch payment_instructions from profiles
+      const { data: profile } = await supabase
+        .from("profiles" as any)
+        .select("payment_instructions")
+        .eq("id", merchantId)
+        .single();
+
+      if (profile && (profile as any).payment_instructions) {
+        setPaymentInstructions((profile as any).payment_instructions);
+      }
+
       setSettingsLoaded(true);
     };
     fetchSettings();
@@ -286,9 +301,20 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
                 </div>
               ))}
             </RadioGroup>
-          </div>
 
-          {/* Promo Code */}
+            {/* Payment Instructions Info Box */}
+            {paymentMethod && paymentMethod !== "cash" && paymentInstructions && (
+              <Alert className="border-primary/30 bg-primary/5">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-sm whitespace-pre-line">
+                  {paymentInstructions}
+                  <p className="text-xs text-muted-foreground mt-2 font-medium">
+                    يرجى إتمام التحويل وإرفاق صورة الإشعار في محادثة الواتساب التالية
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5">
               <Tag className="h-3.5 w-3.5" />
