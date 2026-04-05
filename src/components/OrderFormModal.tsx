@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, MessageCircle, Tag, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
+import { formatSyrianWhatsApp, isValidSyrianPhone } from "@/lib/phone";
 
 interface ShippingZone {
   id: string;
@@ -128,8 +129,10 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
     setAppliedCoupon({ code: data.code, discount_percent: data.discount_percent });
   };
 
+  const phoneValid = isValidSyrianPhone(phone);
+
   const handleSubmit = async () => {
-    if (!fullName.trim() || !city || !address.trim() || !phone.trim()) return;
+    if (!fullName.trim() || !city || !address.trim() || !phone.trim() || !phoneValid) return;
 
     setSaving(true);
 
@@ -186,7 +189,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
       `📍 العنوان: ${address.trim()}\n` +
       `💳 الدفع: ${paymentLabel}`;
 
-    const num = whatsapp.replace(/[^0-9]/g, "");
+    const num = formatSyrianWhatsApp(whatsapp);
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, "_blank");
 
     setFullName("");
@@ -229,7 +232,10 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
           <div className="space-y-1.5">
             <Label htmlFor="phone">رقم الهاتف *</Label>
-            <Input id="phone" placeholder="09XXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Input id="phone" placeholder="09XXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={13} />
+            {phone.trim() && !phoneValid && (
+              <p className="text-xs text-destructive">أدخل رقماً سورياً صحيحاً (مثال: 0932052427)</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -344,7 +350,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
           <Button
             className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-2 font-semibold"
             onClick={handleSubmit}
-            disabled={saving || !fullName.trim() || !city || !address.trim() || !phone.trim()}
+            disabled={saving || !fullName.trim() || !city || !address.trim() || !phoneValid}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
             تأكيد وإرسال عبر واتساب
