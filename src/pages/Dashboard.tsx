@@ -74,12 +74,12 @@ const Dashboard = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <DashboardSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center border-b px-4 bg-card/95 backdrop-blur-md">
             <SidebarTrigger className="ml-3" />
             <span className="text-sm font-medium text-muted-foreground">لوحة التاجر</span>
           </header>
-          <main className="flex-1 p-4 md:p-6 max-w-4xl">
+          <main className="flex-1 w-full min-w-0 p-4 md:p-6">
             <TrialBanner />
             <Outlet />
           </main>
