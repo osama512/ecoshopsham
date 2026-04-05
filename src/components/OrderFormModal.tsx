@@ -301,9 +301,20 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
                 </div>
               ))}
             </RadioGroup>
-          </div>
 
-          {/* Promo Code */}
+            {/* Payment Instructions Info Box */}
+            {paymentMethod && paymentMethod !== "cash" && paymentInstructions && (
+              <Alert className="border-primary/30 bg-primary/5">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-sm whitespace-pre-line">
+                  {paymentInstructions}
+                  <p className="text-xs text-muted-foreground mt-2 font-medium">
+                    يرجى إتمام التحويل وإرفاق صورة الإشعار في محادثة الواتساب التالية
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5">
               <Tag className="h-3.5 w-3.5" />
