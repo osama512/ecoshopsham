@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle } from "lucide-react";
+import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,8 +13,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Product } from "@/integrations/supabase/db-types";
 import { useToast } from "@/hooks/use-toast";
+import ProductImageCarousel from "@/components/ProductImageCarousel";
 
 const FREE_PLAN_LIMIT = 10;
+const MAX_IMAGES = 5;
 
 const DashboardProducts = () => {
   const { user } = useAuth();
@@ -27,8 +30,9 @@ const DashboardProducts = () => {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [stockQuantity, setStockQuantity] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProducts = async () => {
@@ -70,9 +74,10 @@ const DashboardProducts = () => {
     setName("");
     setPrice("");
     setDescription("");
+    setStockQuantity("");
     setEditingProduct(null);
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
   };
 
   const openEdit = (product: Product) => {
@@ -80,20 +85,39 @@ const DashboardProducts = () => {
     setName(product.name);
     setPrice(String(product.price));
     setDescription(product.description || "");
-    setImageFile(null);
-    setImagePreview(product.image_url || null);
+    setStockQuantity(String(product.stock_quantity ?? 0));
+    setImageFiles([]);
+    const existing = product.images?.length ? product.images : product.image_url ? [product.image_url] : [];
+    setImagePreviews(existing);
     setOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "الصورة كبيرة جداً", description: "الحد الأقصى 5 ميغابايت", variant: "destructive" });
-      return;
+    const files = Array.from(e.target.files || []);
+    const totalAllowed = MAX_IMAGES - imagePreviews.length;
+    const toAdd = files.slice(0, totalAllowed);
+
+    for (const file of toAdd) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "الصورة كبيرة جداً", description: "الحد الأقصى 5 ميغابايت", variant: "destructive" });
+        return;
+      }
     }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+
+    setImageFiles((prev) => [...prev, ...toAdd]);
+    setImagePreviews((prev) => [...prev, ...toAdd.map((f) => URL.createObjectURL(f))]);
+    if (e.target) e.target.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    // Only remove from imageFiles if this index corresponds to a new file
+    const existingCount = editingProduct
+      ? (editingProduct.images?.length || (editingProduct.image_url ? 1 : 0))
+      : 0;
+    if (index >= existingCount) {
+      setImageFiles((prev) => prev.filter((_, i) => i !== (index - existingCount)));
+    }
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
@@ -115,20 +139,33 @@ const DashboardProducts = () => {
     }
 
     setSaving(true);
-    let imageUrl: string | null | undefined = undefined;
-    if (imageFile) {
-      const url = await uploadImage(imageFile);
-      if (url) imageUrl = url;
-      else { setSaving(false); return; }
+
+    // Upload new image files
+    const uploadedUrls: string[] = [];
+    for (const file of imageFiles) {
+      const url = await uploadImage(file);
+      if (!url) { setSaving(false); return; }
+      uploadedUrls.push(url);
     }
+
+    // Combine existing kept images + newly uploaded
+    const existingCount = editingProduct
+      ? (editingProduct.images?.length || (editingProduct.image_url ? 1 : 0))
+      : 0;
+    const keptExisting = imagePreviews.slice(0, existingCount).filter((url) => !url.startsWith("blob:"));
+    const allImages = [...keptExisting, ...uploadedUrls];
+
+    const stock = parseInt(stockQuantity) || 0;
 
     if (editingProduct) {
       const updateData: Record<string, unknown> = {
         name: name.trim(),
         price: parseFloat(price),
         description: description.trim() || null,
+        stock_quantity: stock,
+        images: allImages,
+        image_url: allImages[0] || null,
       };
-      if (imageUrl !== undefined) updateData.image_url = imageUrl;
 
       const { data: updatedRows, error } = await (supabase.from("products") as any)
         .update(updateData)
@@ -148,7 +185,9 @@ const DashboardProducts = () => {
         price: parseFloat(price),
         description: description.trim() || null,
         merchant_id: user.id,
-        ...(imageUrl ? { image_url: imageUrl } : {}),
+        stock_quantity: stock,
+        images: allImages,
+        image_url: allImages[0] || null,
       };
 
       const { error } = await (supabase.from("products") as any)
@@ -178,6 +217,12 @@ const DashboardProducts = () => {
     }
   };
 
+  const handleShare = (product: Product) => {
+    const url = `${window.location.origin}/s/${user?.id}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "تم نسخ رابط المتجر! ✅" });
+  };
+
   return (
     <div className="space-y-4">
       {atLimit && (
@@ -203,7 +248,7 @@ const DashboardProducts = () => {
               إضافة منتج
             </Button>
           </DialogTrigger>
-          <DialogContent className="mx-4 max-w-[calc(100vw-2rem)] rounded-2xl">
+          <DialogContent className="mx-4 max-w-[calc(100vw-2rem)] rounded-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
                 {editingProduct ? "تعديل المنتج" : "منتج جديد"}
@@ -219,25 +264,41 @@ const DashboardProducts = () => {
                 <Input id="price" type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="desc">الوصف</Label>
-                <Textarea id="desc" placeholder="وصف المنتج..." rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+                <Label htmlFor="stock">الكمية المتوفرة</Label>
+                <Input id="stock" type="number" placeholder="0" min="0" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>صورة المنتج</Label>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="cursor-pointer border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/50 transition-colors"
-                >
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="معاينة" className="w-full h-32 object-cover rounded-md" />
-                  ) : (
-                    <>
-                      <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
-                      <span className="text-xs text-muted-foreground">اضغط لرفع صورة (حد أقصى 5 ميغابايت)</span>
-                    </>
-                  )}
-                </div>
+                <Label htmlFor="desc">الوصف</Label>
+                <Textarea id="desc" placeholder="وصف المنتج..." rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>صور المنتج ({imagePreviews.length}/{MAX_IMAGES})</Label>
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+                {imagePreviews.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {imagePreviews.map((src, i) => (
+                      <div key={i} className="relative w-20 h-20 rounded-md overflow-hidden border">
+                        <img src={src} alt={`صورة ${i + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i)}
+                          className="absolute top-0.5 left-0.5 bg-destructive text-destructive-foreground rounded-full h-5 w-5 flex items-center justify-center"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {imagePreviews.length < MAX_IMAGES && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="cursor-pointer border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/50 transition-colors"
+                  >
+                    <ImagePlus className="h-8 w-8 text-muted-foreground/50" />
+                    <span className="text-xs text-muted-foreground">اضغط لرفع صور (حد أقصى 5 ميغابايت لكل صورة)</span>
+                  </div>
+                )}
               </div>
               <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold" onClick={handleSave} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
@@ -260,46 +321,61 @@ const DashboardProducts = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {products.map((product) => (
-            <Card key={product.id} className="p-3 space-y-2 hover:shadow-md transition-shadow">
-              <div className="aspect-square rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Package className="h-8 w-8 text-muted-foreground/50" />
+          {products.map((product) => {
+            const outOfStock = (product.stock_quantity ?? 0) <= 0;
+            return (
+              <Card key={product.id} className="p-3 space-y-2 hover:shadow-md transition-shadow relative">
+                {outOfStock && (
+                  <Badge variant="destructive" className="absolute top-2 right-2 z-10 text-[10px]">
+                    نفذت الكمية
+                  </Badge>
                 )}
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-display font-bold text-sm">{Number(product.price).toLocaleString()} ل.س</span>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>حذف المنتج؟</AlertDialogTitle>
-                        <AlertDialogDescription>لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter className="flex-row-reverse gap-2">
-                        <AlertDialogAction onClick={() => handleDelete(product.id)}>حذف</AlertDialogAction>
-                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <ProductImageCarousel
+                  images={product.images || []}
+                  imageUrl={product.image_url}
+                  alt={product.name}
+                  className="aspect-square rounded-lg"
+                />
+                <div>
+                  <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                  {product.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 whitespace-pre-line">{product.description}</p>
+                  )}
                 </div>
-              </div>
-            </Card>
-          ))}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="font-display font-bold text-sm text-foreground">{Number(product.price).toLocaleString()} ل.س</span>
+                  <span>المخزون: {product.stock_quantity ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleShare(product)}>
+                      <Share2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>حذف المنتج؟</AlertDialogTitle>
+                          <AlertDialogDescription>لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex-row-reverse gap-2">
+                          <AlertDialogAction onClick={() => handleDelete(product.id)}>حذف</AlertDialogAction>
+                          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

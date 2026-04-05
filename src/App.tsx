@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import Index from "./pages/Index";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -25,10 +26,11 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-/** Redirect based on role: admin → /admin, merchant → /dashboard */
+/** Redirect authenticated users based on role */
 const RoleRedirect = () => {
-  const { role, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   if (loading) return null;
+  if (!user) return <Index />;
   if (role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/dashboard" replace />;
 };

@@ -3,6 +3,7 @@ import { Package, ShoppingCart, Sparkles, Settings, LogOut, BarChart3, Megaphone
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import TrialBanner from "@/components/TrialBanner";
 import {
   SidebarProvider,
   Sidebar,
@@ -79,6 +80,7 @@ const Dashboard = () => {
             <span className="text-sm font-medium text-muted-foreground">لوحة التاجر</span>
           </header>
           <main className="flex-1 p-4 md:p-6 max-w-4xl">
+            <TrialBanner />
             <Outlet />
           </main>
         </div>

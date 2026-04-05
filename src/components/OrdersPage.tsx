@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, CheckCircle2, Truck, XCircle, Loader2, ShoppingBag, Download, FileSpreadsheet } from "lucide-react";
+import { Clock, CheckCircle2, Truck, XCircle, Loader2, ShoppingBag, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Order } from "@/integrations/supabase/db-types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,8 @@ import { format } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   pending: { label: "قيد الانتظار", className: "bg-warning/15 text-warning border-warning/30", icon: Clock },
+  confirmed: { label: "مؤكد", className: "bg-primary/10 text-primary border-primary/30", icon: CheckCircle2 },
+  reserved: { label: "محجوز", className: "bg-secondary/15 text-secondary border-secondary/30", icon: CheckCircle2 },
   processing: { label: "قيد الشحن", className: "bg-primary/10 text-primary border-primary/30", icon: Truck },
   completed: { label: "مكتمل", className: "bg-success/15 text-success border-success/30", icon: CheckCircle2 },
   cancelled: { label: "ملغى", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
@@ -19,10 +21,15 @@ const statusConfig: Record<string, { label: string; className: string; icon: Rea
 
 const statusOptions = [
   { value: "pending", label: "قيد الانتظار" },
+  { value: "confirmed", label: "مؤكد" },
+  { value: "reserved", label: "محجوز" },
   { value: "processing", label: "قيد الشحن" },
   { value: "completed", label: "مكتمل" },
   { value: "cancelled", label: "ملغى" },
 ];
+
+// Statuses that trigger stock deduction
+const STOCK_DEDUCT_STATUSES = ["confirmed", "reserved"];
 
 const OrdersPage = () => {
   const { user } = useAuth();
@@ -51,16 +58,46 @@ const OrdersPage = () => {
     fetchOrders();
   }, [user]);
 
-  const updateStatus = async (orderId: string, newStatus: string) => {
+  const updateStatus = async (orderId: string, newStatus: string, oldStatus: string, orderDetails: unknown) => {
     const { error } = await (supabase.from("orders") as any)
       .update({ status: newStatus })
       .eq("id", orderId);
 
     if (error) {
       toast({ title: "خطأ في تحديث الحالة", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "تم تحديث حالة الطلب ✅" });
-      fetchOrders();
+      return;
+    }
+
+    // Auto-deduct stock when moving TO confirmed/reserved FROM a non-deducted status
+    const wasDeducted = STOCK_DEDUCT_STATUSES.includes(oldStatus);
+    const shouldDeduct = STOCK_DEDUCT_STATUSES.includes(newStatus);
+
+    if (shouldDeduct && !wasDeducted) {
+      await deductStock(orderDetails);
+    }
+
+    toast({ title: "تم تحديث حالة الطلب ✅" });
+    fetchOrders();
+  };
+
+  const deductStock = async (orderDetails: unknown) => {
+    if (!Array.isArray(orderDetails)) return;
+    for (const item of orderDetails) {
+      if (!item.product_id) continue;
+      const qty = item.quantity || 1;
+      // Fetch current stock
+      const { data: product } = await supabase
+        .from("products")
+        .select("stock_quantity")
+        .eq("id", item.product_id)
+        .single();
+      if (product) {
+        const currentStock = (product as any).stock_quantity ?? 0;
+        const newStock = Math.max(0, currentStock - qty);
+        await (supabase.from("products") as any)
+          .update({ stock_quantity: newStock })
+          .eq("id", item.product_id);
+      }
     }
   };
 
@@ -167,7 +204,10 @@ const OrdersPage = () => {
                 <div className="flex items-center justify-between pt-2 border-t gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">الحالة:</span>
-                    <Select value={order.status} onValueChange={(v) => updateStatus(order.id, v)}>
+                    <Select
+                      value={order.status}
+                      onValueChange={(v) => updateStatus(order.id, v, order.status, order.order_details)}
+                    >
                       <SelectTrigger className="h-7 text-xs w-[120px]">
                         <SelectValue />
                       </SelectTrigger>

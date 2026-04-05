@@ -10,6 +10,7 @@ interface AuthContextType {
   merchantStatus: string | null;
   planType: string | null;
   trialExpired: boolean;
+  trialDaysLeft: number;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   merchantStatus: null,
   planType: null,
   trialExpired: false,
+  trialDaysLeft: 0,
   signOut: async () => {},
 });
 
@@ -44,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [merchantStatus, setMerchantStatus] = useState<string | null>(null);
   const [planType, setPlanType] = useState<string | null>(null);
   const [trialExpired, setTrialExpired] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(0);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -57,11 +60,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setMerchantStatus(d.status ?? "active");
       setPlanType(d.plan_type ?? "free");
       setTrialExpired(isTrialExpired(d.created_at, d.plan_type));
+      if (d.created_at) {
+        const diff = TRIAL_DAYS - (Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        setTrialDaysLeft(Math.max(0, Math.ceil(diff)));
+      }
     } else {
       setRole("merchant");
       setMerchantStatus("active");
       setPlanType("free");
       setTrialExpired(false);
+      setTrialDaysLeft(0);
     }
   };
 
@@ -77,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setMerchantStatus(null);
           setPlanType(null);
           setTrialExpired(false);
+          setTrialDaysLeft(0);
         }
         setLoading(false);
       }
@@ -99,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, trialExpired, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, trialExpired, trialDaysLeft, signOut }}>
       {children}
     </AuthContext.Provider>
   );
