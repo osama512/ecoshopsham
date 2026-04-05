@@ -48,7 +48,7 @@ const AdminOverview = () => {
         <h1 className="text-2xl font-display font-bold">نظرة عامة</h1>
         <p className="text-sm text-muted-foreground">إحصائيات المنصة</p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
         {stats.map((s) => (
           <Card key={s.label} className="p-4 flex flex-col items-center text-center gap-2">
             <div className={`h-10 w-10 rounded-full bg-${s.color}/10 flex items-center justify-center`}>
