@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Package, MessageCircle, Store, Loader2, Ban, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ const TRIAL_DAYS = 7;
 
 const Storefront = () => {
   const { storeId } = useParams<{ storeId: string }>();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeName, setStoreName] = useState("SyriaBiz Store");
@@ -112,14 +113,22 @@ const Storefront = () => {
                       نفذت الكمية
                     </Badge>
                   )}
-                  <ProductImageCarousel
-                    images={product.images || []}
-                    imageUrl={product.image_url}
-                    alt={product.name}
-                    className="aspect-square"
-                  />
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/product/${product.id}`)}
+                  >
+                    <ProductImageCarousel
+                      images={product.images || []}
+                      imageUrl={product.image_url}
+                      alt={product.name}
+                      className="aspect-square"
+                    />
+                  </div>
                   <div className="p-3 flex flex-col flex-1 gap-2">
-                    <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                    <h3
+                      className="font-semibold text-sm leading-tight cursor-pointer hover:text-secondary transition-colors"
+                      onClick={() => navigate(`/product/${product.id}`)}
+                    >{product.name}</h3>
                     {product.description && (
                       <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{product.description}</p>
                     )}

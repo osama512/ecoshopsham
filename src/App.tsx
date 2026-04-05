@@ -22,6 +22,7 @@ import AdminMerchants from "./pages/AdminMerchants";
 import AdminPlans from "./pages/AdminPlans";
 
 import Storefront from "./pages/Storefront";
+import ProductDetails from "./pages/ProductDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/s/:storeId" element={<Storefront />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
             <Route
               path="/dashboard"
               element={
