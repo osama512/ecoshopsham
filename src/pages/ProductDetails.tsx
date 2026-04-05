@@ -43,7 +43,7 @@ const ProductDetails = () => {
         const { data: profile } = await supabase
           .from("profiles" as any)
           .select("*")
-          .eq("id", prod.merchant_id)
+          .eq("id", p.merchant_id)
           .single();
 
         if (profile) {
