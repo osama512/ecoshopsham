@@ -8,6 +8,8 @@ interface AuthContextType {
   loading: boolean;
   role: string | null;
   merchantStatus: string | null;
+  planType: string | null;
+  trialExpired: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -17,10 +19,22 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   role: null,
   merchantStatus: null,
+  planType: null,
+  trialExpired: false,
   signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
+
+const TRIAL_DAYS = 7;
+
+function isTrialExpired(createdAt: string | null, planType: string | null): boolean {
+  if (!createdAt || planType === "pro" || planType === "enterprise") return false;
+  const created = new Date(createdAt);
+  const now = new Date();
+  const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays > TRIAL_DAYS;
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -28,19 +42,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [merchantStatus, setMerchantStatus] = useState<string | null>(null);
+  const [planType, setPlanType] = useState<string | null>(null);
+  const [trialExpired, setTrialExpired] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("role, status")
+      .select("role, status, plan_type, created_at")
       .eq("id", userId)
       .single();
     if (!error && data) {
-      setRole((data as any).role ?? "merchant");
-      setMerchantStatus((data as any).status ?? "active");
+      const d = data as any;
+      setRole(d.role ?? "merchant");
+      setMerchantStatus(d.status ?? "active");
+      setPlanType(d.plan_type ?? "free");
+      setTrialExpired(isTrialExpired(d.created_at, d.plan_type));
     } else {
       setRole("merchant");
       setMerchantStatus("active");
+      setPlanType("free");
+      setTrialExpired(false);
     }
   };
 
@@ -54,6 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setRole(null);
           setMerchantStatus(null);
+          setPlanType(null);
+          setTrialExpired(false);
         }
         setLoading(false);
       }
@@ -76,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, trialExpired, signOut }}>
       {children}
     </AuthContext.Provider>
   );

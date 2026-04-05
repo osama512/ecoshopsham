@@ -1,5 +1,5 @@
 import { Outlet, useLocation, Link } from "react-router-dom";
-import { Package, ShoppingCart, Sparkles, Settings, LogOut, Shield, BarChart3, Megaphone } from "lucide-react";
+import { Package, ShoppingCart, Sparkles, Settings, LogOut, BarChart3, Megaphone } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,8 @@ const navItems = [
 function DashboardSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { signOut, role } = useAuth();
+  const { signOut } = useAuth();
   const location = useLocation();
-  const isAdmin = role === "admin";
 
   return (
     <Sidebar collapsible="icon" side="right">
@@ -60,14 +59,6 @@ function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <div className="mt-auto p-3 space-y-1">
-        {isAdmin && (
-          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" asChild>
-            <Link to="/admin">
-              <Shield className="h-4 w-4" />
-              {!collapsed && "لوحة الإدارة"}
-            </Link>
-          </Button>
-        )}
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={signOut}>
           <LogOut className="h-4 w-4" />
           {!collapsed && "تسجيل الخروج"}

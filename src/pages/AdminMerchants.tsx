@@ -18,6 +18,12 @@ interface MerchantProfile {
   plan_type: string | null;
 }
 
+const PLAN_OPTIONS = [
+  { value: "free", label: "مجانية" },
+  { value: "pro", label: "Pro ⭐" },
+  { value: "enterprise", label: "Enterprise 🏢" },
+];
+
 const AdminMerchants = () => {
   const [merchants, setMerchants] = useState<MerchantProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +34,7 @@ const AdminMerchants = () => {
     const { data } = await supabase
       .from("profiles")
       .select("*")
+      .neq("role", "admin")
       .order("created_at", { ascending: false });
     setMerchants((data as any as MerchantProfile[]) ?? []);
     setLoading(false);
@@ -38,14 +45,14 @@ const AdminMerchants = () => {
   }, []);
 
   const updatePlan = async (merchantId: string, newPlan: string) => {
-    const { error } = await (supabase
-      .from("profiles" as any) as any)
+    const { error } = await (supabase.from("profiles" as any) as any)
       .update({ plan_type: newPlan } as any)
       .eq("id", merchantId);
     if (error) {
       toast({ title: "خطأ في تحديث الباقة", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: newPlan === "pro" ? "تمت الترقية إلى Pro ⭐" : "تم التخفيض إلى المجانية" });
+      const planLabel = PLAN_OPTIONS.find((p) => p.value === newPlan)?.label ?? newPlan;
+      toast({ title: `تم تحديث الباقة إلى ${planLabel}` });
       fetchMerchants();
     }
   };
@@ -53,8 +60,7 @@ const AdminMerchants = () => {
   const toggleStatus = async (merchant: MerchantProfile) => {
     setTogglingId(merchant.id);
     const newStatus = (merchant.status || "active") === "active" ? "suspended" : "active";
-    const { error } = await (supabase
-      .from("profiles" as any) as any)
+    const { error } = await (supabase.from("profiles" as any) as any)
       .update({ status: newStatus } as any)
       .eq("id", merchant.id);
 
@@ -65,6 +71,11 @@ const AdminMerchants = () => {
       fetchMerchants();
     }
     setTogglingId(null);
+  };
+
+  const trialDaysLeft = (createdAt: string) => {
+    const diff = 7 - (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return Math.max(0, Math.ceil(diff));
   };
 
   if (loading) {
@@ -81,13 +92,16 @@ const AdminMerchants = () => {
         <h1 className="text-2xl font-display font-bold">التجار</h1>
         <p className="text-sm text-muted-foreground">{merchants.length} تاجر مسجّل</p>
       </div>
-      <Card className="overflow-hidden overflow-x-auto">
+
+      {/* Desktop Table */}
+      <Card className="overflow-hidden overflow-x-auto hidden sm:block">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>اسم المتجر</TableHead>
               <TableHead>واتساب</TableHead>
               <TableHead>الباقة</TableHead>
+              <TableHead>التجربة</TableHead>
               <TableHead>الحالة</TableHead>
               <TableHead>تاريخ الانضمام</TableHead>
               <TableHead>إجراء</TableHead>
@@ -97,23 +111,32 @@ const AdminMerchants = () => {
             {merchants.map((m) => {
               const status = m.status || "active";
               const isSuspended = status === "suspended";
+              const daysLeft = trialDaysLeft(m.created_at);
+              const isPaid = m.plan_type === "pro" || m.plan_type === "enterprise";
               return (
                 <TableRow key={m.id}>
                   <TableCell className="font-medium">{m.store_name || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{m.whatsapp_number || "—"}</TableCell>
                   <TableCell>
-                    <Select
-                      value={m.plan_type || "free"}
-                      onValueChange={(val) => updatePlan(m.id, val)}
-                    >
-                      <SelectTrigger className="w-24 h-8 text-xs">
+                    <Select value={m.plan_type || "free"} onValueChange={(val) => updatePlan(m.id, val)}>
+                      <SelectTrigger className="w-28 h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="free">مجانية</SelectItem>
-                        <SelectItem value="pro">Pro ⭐</SelectItem>
+                        {PLAN_OPTIONS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell>
+                    {isPaid ? (
+                      <Badge variant="outline" className="text-xs">مدفوعة</Badge>
+                    ) : daysLeft > 0 ? (
+                      <Badge variant="secondary" className="text-xs">{daysLeft} يوم متبقي</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="text-xs">منتهية</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
@@ -131,9 +154,7 @@ const AdminMerchants = () => {
                       disabled={togglingId === m.id}
                       onClick={() => toggleStatus(m)}
                     >
-                      {togglingId === m.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : isSuspended ? "تفعيل" : "إيقاف"}
+                      {togglingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -143,19 +164,25 @@ const AdminMerchants = () => {
         </Table>
       </Card>
 
-      {/* Mobile cards for small screens */}
+      {/* Mobile cards */}
       <div className="block sm:hidden space-y-3">
         {merchants.map((m) => {
           const status = m.status || "active";
           const isSuspended = status === "suspended";
+          const daysLeft = trialDaysLeft(m.created_at);
+          const isPaid = m.plan_type === "pro" || m.plan_type === "enterprise";
           return (
-            <Card key={m.id + "-mobile"} className="p-4 space-y-2">
+            <Card key={m.id + "-mobile"} className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-sm">{m.store_name || "—"}</span>
                 <div className="flex items-center gap-1.5">
-                  <Badge variant={m.plan_type === "pro" ? "default" : "secondary"} className="text-xs">
-                    {m.plan_type === "pro" ? "Pro" : "مجانية"}
-                  </Badge>
+                  {isPaid ? (
+                    <Badge variant="outline" className="text-xs">مدفوعة</Badge>
+                  ) : daysLeft > 0 ? (
+                    <Badge variant="secondary" className="text-xs">{daysLeft} يوم</Badge>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs">منتهية</Badge>
+                  )}
                   <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
                     {isSuspended ? "موقوف" : "نشط"}
                   </Badge>
@@ -167,8 +194,9 @@ const AdminMerchants = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">مجانية</SelectItem>
-                  <SelectItem value="pro">Pro ⭐</SelectItem>
+                  {PLAN_OPTIONS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <div className="flex items-center justify-between">

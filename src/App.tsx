@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import Login from "./pages/Login";
@@ -18,10 +18,20 @@ import DashboardMarketing from "./pages/DashboardMarketing";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminOverview from "./pages/AdminOverview";
 import AdminMerchants from "./pages/AdminMerchants";
+import AdminPlans from "./pages/AdminPlans";
+import AdminReset from "./pages/AdminReset";
 import Storefront from "./pages/Storefront";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+/** Redirect based on role: admin → /admin, merchant → /dashboard */
+const RoleRedirect = () => {
+  const { role, loading } = useAuth();
+  if (loading) return null;
+  if (role === "admin") return <Navigate to="/admin" replace />;
+  return <Navigate to="/dashboard" replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,7 +41,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<RoleRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/s/:storeId" element={<Storefront />} />
@@ -61,6 +71,8 @@ const App = () => (
             >
               <Route index element={<AdminOverview />} />
               <Route path="merchants" element={<AdminMerchants />} />
+              <Route path="plans" element={<AdminPlans />} />
+              <Route path="reset" element={<AdminReset />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

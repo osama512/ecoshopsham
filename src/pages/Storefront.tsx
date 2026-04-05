@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Package, MessageCircle, Store, Loader2, Ban } from "lucide-react";
+import { Package, MessageCircle, Store, Loader2, Ban, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 
 const DEFAULT_WHATSAPP = "963954170549";
+const TRIAL_DAYS = 7;
 
 const Storefront = () => {
   const { storeId } = useParams<{ storeId: string }>();
@@ -16,6 +17,7 @@ const Storefront = () => {
   const [storeName, setStoreName] = useState("SyriaBiz Store");
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
   const [suspended, setSuspended] = useState(false);
+  const [trialExpired, setTrialExpired] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -29,12 +31,25 @@ const Storefront = () => {
         .single();
 
       if (profile) {
-        setStoreName((profile as any).store_name || "SyriaBiz Store");
-        setWhatsapp((profile as any).whatsapp_number || DEFAULT_WHATSAPP);
-        if ((profile as any).status === "suspended") {
+        const p = profile as any;
+        setStoreName(p.store_name || "SyriaBiz Store");
+        setWhatsapp(p.whatsapp_number || DEFAULT_WHATSAPP);
+
+        if (p.status === "suspended") {
           setSuspended(true);
           setLoading(false);
           return;
+        }
+
+        // Check trial expiry for free plans
+        const planType = p.plan_type ?? "free";
+        if (planType !== "pro" && planType !== "enterprise" && p.created_at) {
+          const diffDays = (Date.now() - new Date(p.created_at).getTime()) / (1000 * 60 * 60 * 24);
+          if (diffDays > TRIAL_DAYS) {
+            setTrialExpired(true);
+            setLoading(false);
+            return;
+          }
         }
       }
 
@@ -44,9 +59,7 @@ const Storefront = () => {
         .eq("merchant_id", storeId!)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setProducts(data);
-      }
+      if (!error && data) setProducts(data);
       setLoading(false);
     };
 
@@ -74,6 +87,12 @@ const Storefront = () => {
             <Ban className="h-14 w-14 mx-auto mb-3 opacity-40 text-destructive" />
             <p className="font-semibold text-lg">هذا المتجر غير متاح حالياً</p>
             <p className="text-sm mt-1">يرجى المحاولة لاحقاً</p>
+          </div>
+        ) : trialExpired ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <Clock className="h-14 w-14 mx-auto mb-3 opacity-40" />
+            <p className="font-semibold text-lg">هذا المتجر غير متاح حالياً</p>
+            <p className="text-sm mt-1">انتهت فترة التجربة المجانية لصاحب المتجر</p>
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">

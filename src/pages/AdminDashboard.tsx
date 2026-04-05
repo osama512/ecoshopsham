@@ -1,9 +1,8 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, LogOut, ArrowLeftRight } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, CreditCard, Trash2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import {
   SidebarProvider,
   Sidebar,
@@ -21,6 +20,8 @@ import {
 const navItems = [
   { title: "نظرة عامة", url: "/admin", icon: LayoutDashboard },
   { title: "التجار", url: "/admin/merchants", icon: Users },
+  { title: "الباقات", url: "/admin/plans", icon: CreditCard },
+  { title: "إعادة تعيين البيانات", url: "/admin/reset", icon: Trash2 },
 ];
 
 function AdminSidebar() {
@@ -56,12 +57,6 @@ function AdminSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <div className="mt-auto p-3 space-y-1">
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" asChild>
-          <Link to="/dashboard">
-            <ArrowLeftRight className="h-4 w-4" />
-            {!collapsed && "لوحة التاجر"}
-          </Link>
-        </Button>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={signOut}>
           <LogOut className="h-4 w-4" />
           {!collapsed && "تسجيل الخروج"}
