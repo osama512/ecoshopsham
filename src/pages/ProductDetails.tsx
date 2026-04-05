@@ -35,10 +35,11 @@ const ProductDetails = () => {
         setLoading(false);
         return;
       }
-      setProduct(prod);
-      setMerchantId(prod.merchant_id || "");
+      const p = prod as Product;
+      setProduct(p);
+      setMerchantId(p.merchant_id || "");
 
-      if (prod.merchant_id) {
+      if (p.merchant_id) {
         const { data: profile } = await supabase
           .from("profiles" as any)
           .select("*")

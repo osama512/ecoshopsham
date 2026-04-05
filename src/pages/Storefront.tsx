@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Package, MessageCircle, Store, Loader2, Ban, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ const TRIAL_DAYS = 7;
 
 const Storefront = () => {
   const { storeId } = useParams<{ storeId: string }>();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeName, setStoreName] = useState("SyriaBiz Store");
