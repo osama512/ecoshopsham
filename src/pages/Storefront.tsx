@@ -3,9 +3,11 @@ import { useParams } from "react-router-dom";
 import { Package, MessageCircle, Store, Loader2, Ban, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
+import ProductImageCarousel from "@/components/ProductImageCarousel";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -41,7 +43,6 @@ const Storefront = () => {
           return;
         }
 
-        // Check trial expiry for free plans
         const planType = p.plan_type ?? "free";
         if (planType !== "pro" && planType !== "enterprise" && p.created_at) {
           const diffDays = (Date.now() - new Date(p.created_at).getTime()) / (1000 * 60 * 60 * 24);
@@ -102,34 +103,42 @@ const Storefront = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {products.map((product) => (
-              <Card key={product.id} className="overflow-hidden flex flex-col">
-                <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <Package className="h-10 w-10 text-muted-foreground/40" />
+            {products.map((product) => {
+              const outOfStock = (product.stock_quantity ?? 0) <= 0;
+              return (
+                <Card key={product.id} className="overflow-hidden flex flex-col relative">
+                  {outOfStock && (
+                    <Badge variant="destructive" className="absolute top-2 right-2 z-10 text-[10px]">
+                      نفذت الكمية
+                    </Badge>
                   )}
-                </div>
-                <div className="p-3 flex flex-col flex-1 gap-2">
-                  <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
-                  {product.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
-                  )}
-                  <span className="font-display font-bold text-sm text-secondary mt-auto">
-                    {Number(product.price).toLocaleString()} ل.س
-                  </span>
-                  <Button
-                    className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1.5 text-xs font-semibold"
-                    size="sm"
-                    onClick={() => setSelectedProduct(product)}
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                    اطلب عبر واتساب
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                  <ProductImageCarousel
+                    images={product.images || []}
+                    imageUrl={product.image_url}
+                    alt={product.name}
+                    className="aspect-square"
+                  />
+                  <div className="p-3 flex flex-col flex-1 gap-2">
+                    <h3 className="font-semibold text-sm leading-tight">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{product.description}</p>
+                    )}
+                    <span className="font-display font-bold text-sm text-secondary mt-auto">
+                      {Number(product.price).toLocaleString()} ل.س
+                    </span>
+                    <Button
+                      className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1.5 text-xs font-semibold"
+                      size="sm"
+                      onClick={() => setSelectedProduct(product)}
+                      disabled={outOfStock}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {outOfStock ? "نفذت الكمية" : "اطلب عبر واتساب"}
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

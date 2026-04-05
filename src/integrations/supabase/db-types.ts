@@ -9,6 +9,8 @@ export interface Database {
           price: number;
           description: string | null;
           image_url: string | null;
+          images: string[] | null;
+          stock_quantity: number;
           created_at: string;
         };
         Insert: {
@@ -18,6 +20,8 @@ export interface Database {
           price: number;
           description?: string | null;
           image_url?: string | null;
+          images?: string[] | null;
+          stock_quantity?: number;
           created_at?: string;
         };
         Update: {
@@ -27,6 +31,8 @@ export interface Database {
           price?: number;
           description?: string | null;
           image_url?: string | null;
+          images?: string[] | null;
+          stock_quantity?: number;
           created_at?: string;
         };
       };
