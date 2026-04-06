@@ -240,9 +240,28 @@ const OrdersPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="text-left">
-                    <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} ل.س</span>
-                    <p className="text-[10px] text-muted-foreground">{formatDate(order.created_at)}</p>
+                  <div className="text-left flex items-center gap-2">
+                    <div>
+                      <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} ل.س</span>
+                      <p className="text-[10px] text-muted-foreground">{formatDate(order.created_at)}</p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>حذف الطلب؟</AlertDialogTitle>
+                          <AlertDialogDescription>هل أنت متأكد من حذف هذا الطلب نهائياً؟</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex-row-reverse gap-2">
+                          <AlertDialogAction onClick={() => handleDeleteOrder(order.id)}>حذف</AlertDialogAction>
+                          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </Card>
