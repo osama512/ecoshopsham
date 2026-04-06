@@ -29,6 +29,7 @@ const ProductDetails = () => {
         .from("products")
         .select("*")
         .eq("id", id!)
+        .eq("is_visible", true)
         .single();
 
       if (!prod) {

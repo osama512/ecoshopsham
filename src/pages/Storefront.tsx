@@ -59,6 +59,7 @@ const Storefront = () => {
         .from("products")
         .select("*")
         .eq("merchant_id", storeId!)
+        .eq("is_visible", true)
         .order("created_at", { ascending: false });
 
       if (!error && data) setProducts(data);

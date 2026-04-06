@@ -11,6 +11,7 @@ export interface Database {
           image_url: string | null;
           images: string[] | null;
           stock_quantity: number;
+          is_visible: boolean;
           created_at: string;
         };
         Insert: {
@@ -22,6 +23,7 @@ export interface Database {
           image_url?: string | null;
           images?: string[] | null;
           stock_quantity?: number;
+          is_visible?: boolean;
           created_at?: string;
         };
         Update: {
@@ -33,6 +35,7 @@ export interface Database {
           image_url?: string | null;
           images?: string[] | null;
           stock_quantity?: number;
+          is_visible?: boolean;
           created_at?: string;
         };
       };

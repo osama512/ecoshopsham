@@ -3,7 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, CheckCircle2, Truck, XCircle, Loader2, ShoppingBag, FileSpreadsheet } from "lucide-react";
+import { Clock, CheckCircle2, Truck, XCircle, Loader2, ShoppingBag, FileSpreadsheet, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { toast as sonnerToast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Order } from "@/integrations/supabase/db-types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -98,6 +100,26 @@ const OrdersPage = () => {
           .update({ stock_quantity: newStock })
           .eq("id", item.product_id);
       }
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    const previousOrders = orders;
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    try {
+      const { error } = await (supabase.from("orders") as any)
+        .delete()
+        .eq("id", orderId)
+        .eq("merchant_id", user!.id);
+      if (error) {
+        setOrders(previousOrders);
+        sonnerToast.error(error.message);
+      } else {
+        toast({ title: "تم حذف الطلب ✅" });
+      }
+    } catch (err) {
+      setOrders(previousOrders);
+      sonnerToast.error("حدث خطأ أثناء حذف الطلب");
     }
   };
 
@@ -218,9 +240,28 @@ const OrdersPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="text-left">
-                    <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} ل.س</span>
-                    <p className="text-[10px] text-muted-foreground">{formatDate(order.created_at)}</p>
+                  <div className="text-left flex items-center gap-2">
+                    <div>
+                      <span className="font-display font-bold">{Number(order.total_price).toLocaleString()} ل.س</span>
+                      <p className="text-[10px] text-muted-foreground">{formatDate(order.created_at)}</p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>حذف الطلب؟</AlertDialogTitle>
+                          <AlertDialogDescription>هل أنت متأكد من حذف هذا الطلب نهائياً؟</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex-row-reverse gap-2">
+                          <AlertDialogAction onClick={() => handleDeleteOrder(order.id)}>حذف</AlertDialogAction>
+                          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </Card>

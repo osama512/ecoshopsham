@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
-import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle, Share2, X } from "lucide-react";
+import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle, Share2, X, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -262,6 +262,20 @@ const DashboardProducts = () => {
     }
   };
 
+  const handleToggleVisibility = async (product: Product) => {
+    const newVisible = !(product.is_visible ?? true);
+    setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_visible: newVisible } : p));
+    const { error } = await (supabase.from("products") as any)
+      .update({ is_visible: newVisible })
+      .eq("id", product.id);
+    if (error) {
+      setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_visible: !newVisible } : p));
+      sonnerToast.error(error.message);
+    } else {
+      toast({ title: newVisible ? "المنتج مرئي الآن ✅" : "تم إخفاء المنتج 🙈" });
+    }
+  };
+
   const handleShare = (product: Product) => {
     const url = `${window.location.origin}/s/${user?.id}`;
     navigator.clipboard.writeText(url);
@@ -368,11 +382,17 @@ const DashboardProducts = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {products.map((product) => {
             const outOfStock = (product.stock_quantity ?? 0) <= 0;
+            const isHidden = !(product.is_visible ?? true);
             return (
-              <Card key={product.id} className="p-3 space-y-2 hover:shadow-md transition-shadow relative">
+              <Card key={product.id} className={`p-3 space-y-2 hover:shadow-md transition-shadow relative ${isHidden ? "opacity-60" : ""}`}>
                 {outOfStock && (
                   <Badge variant="destructive" className="absolute top-2 right-2 z-10 text-[10px]">
                     نفذت الكمية
+                  </Badge>
+                )}
+                {isHidden && (
+                  <Badge variant="secondary" className="absolute top-2 left-2 z-10 text-[10px]">
+                    مخفي
                   </Badge>
                 )}
                 <ProductImageCarousel
@@ -395,6 +415,9 @@ const DashboardProducts = () => {
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
                       <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleVisibility(product)} title={isHidden ? "إظهار" : "إخفاء"}>
+                      {isHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleShare(product)}>
                       <Share2 className="h-3.5 w-3.5" />
