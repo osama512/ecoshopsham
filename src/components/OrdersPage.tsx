@@ -103,6 +103,26 @@ const OrdersPage = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    const previousOrders = orders;
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    try {
+      const { error } = await (supabase.from("orders") as any)
+        .delete()
+        .eq("id", orderId)
+        .eq("merchant_id", user!.id);
+      if (error) {
+        setOrders(previousOrders);
+        sonnerToast.error(error.message);
+      } else {
+        toast({ title: "تم حذف الطلب ✅" });
+      }
+    } catch (err) {
+      setOrders(previousOrders);
+      sonnerToast.error("حدث خطأ أثناء حذف الطلب");
+    }
+  };
+
   const pendingCount = orders.filter((o) => o.status === "pending").length;
 
   const formatDate = (dateStr: string) => {
