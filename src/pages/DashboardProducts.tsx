@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
-import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle, Share2, X } from "lucide-react";
+import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle, Share2, X, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
