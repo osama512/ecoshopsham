@@ -212,6 +212,7 @@ const DashboardProducts = () => {
     if (error) {
       toast({ title: "خطأ في الحذف", description: error.message, variant: "destructive" });
     } else {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
       toast({ title: "تم حذف المنتج" });
       fetchProducts();
     }
