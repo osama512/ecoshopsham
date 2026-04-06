@@ -34,7 +34,7 @@ const AdminMerchants = () => {
     const { data } = await supabase
       .from("profiles")
       .select("*")
-      .neq("role", "admin")
+      .eq("role", "merchant")
       .order("created_at", { ascending: false });
     setMerchants((data as any as MerchantProfile[]) ?? []);
     setLoading(false);
