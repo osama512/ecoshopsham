@@ -226,39 +226,43 @@ const DashboardProducts = () => {
         .eq("merchant_id", user.id)
         .select("id");
 
-      console.log("[DashboardProducts] Delete response:", {
-        deletedId,
-        merchantId: user.id,
-        deletedRows,
-        error,
-      });
-
       if (error) {
-        console.error("[DashboardProducts] Supabase delete error:", error);
         setProducts(previousProducts);
-        sonnerToast.error(error.message);
+        const isFKError = error.message?.toLowerCase().includes("foreign key") ||
+          error.message?.toLowerCase().includes("violates") ||
+          error.code === "23503";
+        if (isFKError) {
+          sonnerToast.error("لا يمكن حذف المنتج لأنه مرتبط بطلبات سابقة، يمكنك إخفاؤه بدلاً من الحذف.");
+        } else {
+          sonnerToast.error(error.message);
+        }
         return;
       }
 
       const deleted = Array.isArray(deletedRows) && deletedRows.some((row) => row.id === deletedId);
-
       if (!deleted) {
-        console.error("[DashboardProducts] Delete blocked: no rows were removed.", {
-          deletedId,
-          merchantId: user.id,
-          deletedRows,
-        });
-        setProducts(previousProducts);
-        sonnerToast.error("لم يتم حذف المنتج من قاعدة البيانات. تحقق من سياسة DELETE أو من وجود ارتباط يمنع الحذف.");
+        // Hard delete blocked (RLS or FK) — fallback to soft delete (hide)
+        const { error: hideError } = await (supabase.from("products") as any)
+          .update({ is_visible: false })
+          .eq("id", deletedId)
+          .eq("merchant_id", user.id);
+
+        if (hideError) {
+          setProducts(previousProducts);
+          sonnerToast.error("فشل الحذف والإخفاء. تحقق من صلاحيات قاعدة البيانات.");
+        } else {
+          setProducts(previousProducts.map((p) => p.id === deletedId ? { ...p, is_visible: false } : p));
+          toast({ title: "تم إخفاء المنتج بدلاً من حذفه (مرتبط بطلبات) 🙈" });
+        }
         return;
       }
 
-      toast({ title: "تم حذف المنتج" });
+      toast({ title: "تم حذف المنتج نهائياً ✅" });
       await queryClient.invalidateQueries({ queryKey: ["products"] });
+      fetchProducts();
     } catch (error) {
-      console.error("[DashboardProducts] Unexpected delete error:", error);
       setProducts(previousProducts);
-      sonnerToast.error(error instanceof Error ? error.message : "حدث خطأ غير متوقع أثناء حذف المنتج");
+      sonnerToast.error(error instanceof Error ? error.message : "حدث خطأ غير متوقع");
     }
   };
 
@@ -431,10 +435,12 @@ const DashboardProducts = () => {
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>حذف المنتج؟</AlertDialogTitle>
-                          <AlertDialogDescription>لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
+                          <AlertDialogDescription>
+                            سيتم محاولة الحذف النهائي. إذا كان المنتج مرتبطاً بطلبات سابقة سيتم إخفاؤه تلقائياً بدلاً من الحذف.
+                          </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter className="flex-row-reverse gap-2">
-                          <AlertDialogAction onClick={() => handleDelete(product.id)}>حذف</AlertDialogAction>
+                          <AlertDialogAction onClick={() => handleDelete(product.id)}>حذف نهائي</AlertDialogAction>
                           <AlertDialogCancel>إلغاء</AlertDialogCancel>
                         </AlertDialogFooter>
                       </AlertDialogContent>
