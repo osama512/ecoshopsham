@@ -19,7 +19,7 @@ const Signup = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: window.location.origin },
@@ -28,7 +28,26 @@ const Signup = () => {
     if (error) {
       toast({ title: "فشل إنشاء الحساب", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "تم إنشاء الحساب! تحقق من بريدك الإلكتروني للتأكيد." });
+      if (data.user) {
+        const { error: profileError } = await (supabase.from("profiles" as any) as any).upsert({
+          id: data.user.id,
+          role: "merchant",
+          status: "active",
+          plan_type: "free",
+          updated_at: new Date().toISOString(),
+        } as any);
+
+        if (profileError) {
+          toast({
+            title: "تم إنشاء الحساب",
+            description: "تم إنشاء الحساب لكن تعذر تهيئة ملف التاجر الآن، وسيُعاد إنشاؤه عند تسجيل الدخول.",
+          });
+        } else {
+          toast({ title: "تم إنشاء الحساب! تحقق من بريدك الإلكتروني للتأكيد." });
+        }
+      } else {
+        toast({ title: "تم إنشاء الحساب! تحقق من بريدك الإلكتروني للتأكيد." });
+      }
       navigate("/login");
     }
     setLoading(false);
