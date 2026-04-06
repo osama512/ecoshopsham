@@ -48,13 +48,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [trialExpired, setTrialExpired] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
 
+  const applyFallbackProfileState = (daysLeft: number) => {
+    setRole("merchant");
+    setMerchantStatus("active");
+    setPlanType("free");
+    setTrialExpired(false);
+    setTrialDaysLeft(daysLeft);
+  };
+
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
       .select("role, status, plan_type, created_at")
       .eq("id", userId)
-      .single();
-    if (!error && data) {
+      .maybeSingle();
+
+    if (error) {
+      applyFallbackProfileState(0);
+      return;
+    }
+
+    if (data) {
       const d = data as any;
       setRole(d.role ?? "merchant");
       setMerchantStatus(d.status ?? "active");
@@ -63,14 +77,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (d.created_at) {
         const diff = TRIAL_DAYS - (Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24);
         setTrialDaysLeft(Math.max(0, Math.ceil(diff)));
+      } else {
+        setTrialDaysLeft(TRIAL_DAYS);
       }
-    } else {
-      setRole("merchant");
-      setMerchantStatus("active");
-      setPlanType("free");
-      setTrialExpired(false);
-      setTrialDaysLeft(0);
+      return;
     }
+
+    const { error: upsertError } = await (supabase.from("profiles" as any) as any).upsert(
+      {
+        id: userId,
+        role: "merchant",
+        status: "active",
+        plan_type: "free",
+        updated_at: new Date().toISOString(),
+      } as any
+    );
+
+    if (upsertError) {
+      console.error("Failed to initialize merchant profile", upsertError);
+      applyFallbackProfileState(0);
+      return;
+    }
+
+    applyFallbackProfileState(TRIAL_DAYS);
   };
 
   useEffect(() => {

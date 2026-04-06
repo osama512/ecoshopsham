@@ -12,7 +12,7 @@ interface MerchantProfile {
   id: string;
   store_name: string | null;
   whatsapp_number: string | null;
-  created_at: string;
+  created_at: string | null;
   role: string | null;
   status: string | null;
   plan_type: string | null;
@@ -24,6 +24,33 @@ const PLAN_OPTIONS = [
   { value: "enterprise", label: "Enterprise 🏢" },
 ];
 
+const TRIAL_DAYS = 7;
+
+const getTrialDaysLeft = (createdAt: string | null) => {
+  if (!createdAt) return 0;
+  const diff = TRIAL_DAYS - (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
+  return Math.max(0, Math.ceil(diff));
+};
+
+const getMerchantDisplayName = (merchant: MerchantProfile) =>
+  merchant.store_name?.trim() || "إعداد المتجر قيد الانتظار";
+
+const getMerchantStatus = (
+  merchant: MerchantProfile
+): { label: string; variant: "secondary" | "destructive" | "outline" } => {
+  if ((merchant.status || "active") === "suspended") {
+    return { label: "موقوف", variant: "destructive" };
+  }
+
+  if (merchant.plan_type === "pro" || merchant.plan_type === "enterprise") {
+    return { label: "نشط", variant: "outline" };
+  }
+
+  return getTrialDaysLeft(merchant.created_at) > 0
+    ? { label: "تجريبي", variant: "secondary" }
+    : { label: "انتهت التجربة", variant: "destructive" };
+};
+
 const AdminMerchants = () => {
   const [merchants, setMerchants] = useState<MerchantProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,12 +58,20 @@ const AdminMerchants = () => {
   const { toast } = useToast();
 
   const fetchMerchants = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
+    setLoading(true);
+
+    const { data, error } = await (supabase.from("profiles" as any) as any)
+      .select("id, store_name, whatsapp_number, created_at, role, status, plan_type")
       .eq("role", "merchant")
       .order("created_at", { ascending: false });
-    setMerchants((data as any as MerchantProfile[]) ?? []);
+
+    if (error) {
+      toast({ title: "خطأ في جلب التجار", description: error.message, variant: "destructive" });
+      setMerchants([]);
+    } else {
+      setMerchants((data as MerchantProfile[]) ?? []);
+    }
+
     setLoading(false);
   };
 
@@ -73,11 +108,6 @@ const AdminMerchants = () => {
     setTogglingId(null);
   };
 
-  const trialDaysLeft = (createdAt: string) => {
-    const diff = 7 - (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    return Math.max(0, Math.ceil(diff));
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -93,8 +123,7 @@ const AdminMerchants = () => {
         <p className="text-sm text-muted-foreground">{merchants.length} تاجر مسجّل</p>
       </div>
 
-      {/* Desktop Table */}
-      <Card className="overflow-hidden overflow-x-auto hidden sm:block">
+      <Card className="hidden overflow-hidden overflow-x-auto sm:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -108,23 +137,24 @@ const AdminMerchants = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {merchants.map((m) => {
-              const status = m.status || "active";
-              const isSuspended = status === "suspended";
-              const daysLeft = trialDaysLeft(m.created_at);
-              const isPaid = m.plan_type === "pro" || m.plan_type === "enterprise";
+            {merchants.map((merchant) => {
+              const isSuspended = (merchant.status || "active") === "suspended";
+              const daysLeft = getTrialDaysLeft(merchant.created_at);
+              const isPaid = merchant.plan_type === "pro" || merchant.plan_type === "enterprise";
+              const statusBadge = getMerchantStatus(merchant);
+
               return (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.store_name || "—"}</TableCell>
-                  <TableCell className="font-mono text-sm">{m.whatsapp_number || "—"}</TableCell>
+                <TableRow key={merchant.id}>
+                  <TableCell className="font-medium">{getMerchantDisplayName(merchant)}</TableCell>
+                  <TableCell className="font-mono text-sm">{merchant.whatsapp_number || "—"}</TableCell>
                   <TableCell>
-                    <Select value={m.plan_type || "free"} onValueChange={(val) => updatePlan(m.id, val)}>
-                      <SelectTrigger className="w-28 h-8 text-xs">
+                    <Select value={merchant.plan_type || "free"} onValueChange={(value) => updatePlan(merchant.id, value)}>
+                      <SelectTrigger className="h-8 w-28 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {PLAN_OPTIONS.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        {PLAN_OPTIONS.map((plan) => (
+                          <SelectItem key={plan.value} value={plan.value}>{plan.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -139,22 +169,22 @@ const AdminMerchants = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
-                      {isSuspended ? "موقوف" : "نشط"}
+                    <Badge variant={statusBadge.variant} className="text-xs">
+                      {statusBadge.label}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {new Date(m.created_at).toLocaleDateString("ar-SY")}
+                  <TableCell className="text-sm text-muted-foreground">
+                    {merchant.created_at ? new Date(merchant.created_at).toLocaleDateString("ar-SY") : "—"}
                   </TableCell>
                   <TableCell>
                     <Button
                       variant={isSuspended ? "default" : "destructive"}
                       size="sm"
                       className="text-xs"
-                      disabled={togglingId === m.id}
-                      onClick={() => toggleStatus(m)}
+                      disabled={togglingId === merchant.id}
+                      onClick={() => toggleStatus(merchant)}
                     >
-                      {togglingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
+                      {togglingId === merchant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -164,17 +194,17 @@ const AdminMerchants = () => {
         </Table>
       </Card>
 
-      {/* Mobile cards */}
-      <div className="block sm:hidden space-y-3">
-        {merchants.map((m) => {
-          const status = m.status || "active";
-          const isSuspended = status === "suspended";
-          const daysLeft = trialDaysLeft(m.created_at);
-          const isPaid = m.plan_type === "pro" || m.plan_type === "enterprise";
+      <div className="block space-y-3 sm:hidden">
+        {merchants.map((merchant) => {
+          const isSuspended = (merchant.status || "active") === "suspended";
+          const daysLeft = getTrialDaysLeft(merchant.created_at);
+          const isPaid = merchant.plan_type === "pro" || merchant.plan_type === "enterprise";
+          const statusBadge = getMerchantStatus(merchant);
+
           return (
-            <Card key={m.id + "-mobile"} className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm">{m.store_name || "—"}</span>
+            <Card key={`${merchant.id}-mobile`} className="space-y-3 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold text-sm">{getMerchantDisplayName(merchant)}</span>
                 <div className="flex items-center gap-1.5">
                   {isPaid ? (
                     <Badge variant="outline" className="text-xs">مدفوعة</Badge>
@@ -183,32 +213,34 @@ const AdminMerchants = () => {
                   ) : (
                     <Badge variant="destructive" className="text-xs">منتهية</Badge>
                   )}
-                  <Badge variant={isSuspended ? "destructive" : "outline"} className="text-xs">
-                    {isSuspended ? "موقوف" : "نشط"}
+                  <Badge variant={statusBadge.variant} className="text-xs">
+                    {statusBadge.label}
                   </Badge>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground font-mono">{m.whatsapp_number || "—"}</p>
-              <Select value={m.plan_type || "free"} onValueChange={(val) => updatePlan(m.id, val)}>
-                <SelectTrigger className="w-full h-8 text-xs">
+              <p className="font-mono text-xs text-muted-foreground">{merchant.whatsapp_number || "—"}</p>
+              <Select value={merchant.plan_type || "free"} onValueChange={(value) => updatePlan(merchant.id, value)}>
+                <SelectTrigger className="h-8 w-full text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PLAN_OPTIONS.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  {PLAN_OPTIONS.map((plan) => (
+                    <SelectItem key={plan.value} value={plan.value}>{plan.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleDateString("ar-SY")}</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {merchant.created_at ? new Date(merchant.created_at).toLocaleDateString("ar-SY") : "—"}
+                </span>
                 <Button
                   variant={isSuspended ? "default" : "destructive"}
                   size="sm"
                   className="text-xs"
-                  disabled={togglingId === m.id}
-                  onClick={() => toggleStatus(m)}
+                  disabled={togglingId === merchant.id}
+                  onClick={() => toggleStatus(merchant)}
                 >
-                  {togglingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
+                  {togglingId === merchant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
                 </Button>
               </div>
             </Card>
