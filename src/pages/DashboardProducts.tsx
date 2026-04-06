@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast as sonnerToast } from "sonner";
 import { Plus, Package, Loader2, Pencil, Trash2, ImagePlus, AlertTriangle, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,6 +22,7 @@ const MAX_IMAGES = 5;
 
 const DashboardProducts = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [planType, setPlanType] = useState<string>("free");
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -207,14 +210,55 @@ const DashboardProducts = () => {
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) {
-      toast({ title: "خطأ في الحذف", description: error.message, variant: "destructive" });
-    } else {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (deletedId: string) => {
+    if (!user) {
+      sonnerToast.error("يجب تسجيل الدخول أولاً");
+      return;
+    }
+
+    const previousProducts = products;
+    setProducts((current) => current.filter((product) => product.id !== deletedId));
+
+    try {
+      const { data: deletedRows, error } = await (supabase.from("products") as any)
+        .delete()
+        .eq("id", deletedId)
+        .eq("merchant_id", user.id)
+        .select("id");
+
+      console.log("[DashboardProducts] Delete response:", {
+        deletedId,
+        merchantId: user.id,
+        deletedRows,
+        error,
+      });
+
+      if (error) {
+        console.error("[DashboardProducts] Supabase delete error:", error);
+        setProducts(previousProducts);
+        sonnerToast.error(error.message);
+        return;
+      }
+
+      const deleted = Array.isArray(deletedRows) && deletedRows.some((row) => row.id === deletedId);
+
+      if (!deleted) {
+        console.error("[DashboardProducts] Delete blocked: no rows were removed.", {
+          deletedId,
+          merchantId: user.id,
+          deletedRows,
+        });
+        setProducts(previousProducts);
+        sonnerToast.error("لم يتم حذف المنتج من قاعدة البيانات. تحقق من سياسة DELETE أو من وجود ارتباط يمنع الحذف.");
+        return;
+      }
+
       toast({ title: "تم حذف المنتج" });
-      fetchProducts();
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+    } catch (error) {
+      console.error("[DashboardProducts] Unexpected delete error:", error);
+      setProducts(previousProducts);
+      sonnerToast.error(error instanceof Error ? error.message : "حدث خطأ غير متوقع أثناء حذف المنتج");
     }
   };
 
