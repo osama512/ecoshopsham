@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,27 @@ const PLAN_OPTIONS = [
   { value: "enterprise", label: "Enterprise 🏢" },
 ];
 
+const DUMMY_MERCHANTS: MerchantProfile[] = [
+  {
+    id: "dummy-merchant-1",
+    store_name: "متجر تجريبي",
+    whatsapp_number: "0999999999",
+    created_at: new Date().toISOString(),
+    role: "merchant",
+    status: "active",
+    plan_type: "free",
+  },
+  {
+    id: "dummy-merchant-2",
+    store_name: null,
+    whatsapp_number: "0988888888",
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    role: "merchant",
+    status: "active",
+    plan_type: "free",
+  },
+];
+
 const TRIAL_DAYS = 7;
 
 const getTrialDaysLeft = (createdAt: string | null) => {
@@ -34,6 +56,8 @@ const getTrialDaysLeft = (createdAt: string | null) => {
 
 const getMerchantDisplayName = (merchant: MerchantProfile) =>
   merchant.store_name?.trim() || "إعداد المتجر قيد الانتظار";
+
+const isDummyMerchant = (merchantId: string) => merchantId.startsWith("dummy-");
 
 const getMerchantStatus = (
   merchant: MerchantProfile
@@ -55,21 +79,39 @@ const AdminMerchants = () => {
   const [merchants, setMerchants] = useState<MerchantProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [debugAlert, setDebugAlert] = useState<string | null>(null);
+  const [usingDummyData, setUsingDummyData] = useState(false);
   const { toast } = useToast();
 
   const fetchMerchants = async () => {
     setLoading(true);
+    setDebugAlert(null);
+    setUsingDummyData(false);
+
+    await supabase.auth.getSession();
 
     const { data, error } = await (supabase.from("profiles" as any) as any)
-      .select("id, store_name, whatsapp_number, created_at, role, status, plan_type")
-      .eq("role", "merchant")
-      .order("created_at", { ascending: false });
+      .select("*")
+      .eq("role", "merchant");
+
+    console.log("[AdminMerchants] Raw profiles data:", data);
 
     if (error) {
+      console.error("[AdminMerchants] Failed to fetch merchant profiles:", error);
       toast({ title: "خطأ في جلب التجار", description: error.message, variant: "destructive" });
-      setMerchants([]);
+      setDebugAlert(`Supabase error: ${error.message}`);
+      setUsingDummyData(true);
+      setMerchants(DUMMY_MERCHANTS);
     } else {
-      setMerchants((data as MerchantProfile[]) ?? []);
+      const merchantRows = (data as MerchantProfile[]) ?? [];
+
+      if (merchantRows.length === 0) {
+        setDebugAlert("Displaying dummy data to verify the table UI works.");
+        setUsingDummyData(true);
+        setMerchants(DUMMY_MERCHANTS);
+      } else {
+        setMerchants(merchantRows);
+      }
     }
 
     setLoading(false);
@@ -116,12 +158,24 @@ const AdminMerchants = () => {
     );
   }
 
+  const totalMerchants = usingDummyData ? 0 : merchants.length;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold">التجار</h1>
-        <p className="text-sm text-muted-foreground">{merchants.length} تاجر مسجّل</p>
+        <p className="text-sm text-muted-foreground">{totalMerchants} تاجر مسجّل</p>
       </div>
+
+      {usingDummyData ? (
+        <Alert variant="destructive" className="border-2">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle className="text-base">No data found in Supabase</AlertTitle>
+          <AlertDescription>
+            {debugAlert ?? "Displaying dummy data to verify the table UI works."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <Card className="hidden overflow-hidden overflow-x-auto sm:block">
         <Table>
@@ -142,13 +196,18 @@ const AdminMerchants = () => {
               const daysLeft = getTrialDaysLeft(merchant.created_at);
               const isPaid = merchant.plan_type === "pro" || merchant.plan_type === "enterprise";
               const statusBadge = getMerchantStatus(merchant);
+              const isDebugRow = usingDummyData || isDummyMerchant(merchant.id);
 
               return (
                 <TableRow key={merchant.id}>
                   <TableCell className="font-medium">{getMerchantDisplayName(merchant)}</TableCell>
                   <TableCell className="font-mono text-sm">{merchant.whatsapp_number || "—"}</TableCell>
                   <TableCell>
-                    <Select value={merchant.plan_type || "free"} onValueChange={(value) => updatePlan(merchant.id, value)}>
+                    <Select
+                      value={merchant.plan_type || "free"}
+                      onValueChange={(value) => updatePlan(merchant.id, value)}
+                      disabled={isDebugRow}
+                    >
                       <SelectTrigger className="h-8 w-28 text-xs">
                         <SelectValue />
                       </SelectTrigger>
@@ -181,7 +240,7 @@ const AdminMerchants = () => {
                       variant={isSuspended ? "default" : "destructive"}
                       size="sm"
                       className="text-xs"
-                      disabled={togglingId === merchant.id}
+                      disabled={isDebugRow || togglingId === merchant.id}
                       onClick={() => toggleStatus(merchant)}
                     >
                       {togglingId === merchant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
@@ -200,6 +259,7 @@ const AdminMerchants = () => {
           const daysLeft = getTrialDaysLeft(merchant.created_at);
           const isPaid = merchant.plan_type === "pro" || merchant.plan_type === "enterprise";
           const statusBadge = getMerchantStatus(merchant);
+          const isDebugRow = usingDummyData || isDummyMerchant(merchant.id);
 
           return (
             <Card key={`${merchant.id}-mobile`} className="space-y-3 p-4">
@@ -219,7 +279,11 @@ const AdminMerchants = () => {
                 </div>
               </div>
               <p className="font-mono text-xs text-muted-foreground">{merchant.whatsapp_number || "—"}</p>
-              <Select value={merchant.plan_type || "free"} onValueChange={(value) => updatePlan(merchant.id, value)}>
+              <Select
+                value={merchant.plan_type || "free"}
+                onValueChange={(value) => updatePlan(merchant.id, value)}
+                disabled={isDebugRow}
+              >
                 <SelectTrigger className="h-8 w-full text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -237,7 +301,7 @@ const AdminMerchants = () => {
                   variant={isSuspended ? "default" : "destructive"}
                   size="sm"
                   className="text-xs"
-                  disabled={togglingId === merchant.id}
+                  disabled={isDebugRow || togglingId === merchant.id}
                   onClick={() => toggleStatus(merchant)}
                 >
                   {togglingId === merchant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
