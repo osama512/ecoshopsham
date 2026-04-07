@@ -1,13 +1,46 @@
 import { useState } from "react";
-import { Sparkles, Facebook, Copy, Check, Loader2, Link2 } from "lucide-react";
+import { Sparkles, Facebook, Copy, Check, Loader2, Link2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
-const FALLBACK_AD = "يا أكابر، أحلى العروض عنا وبأسعار لقطة ما بتتعوض! جودة نخب أول وشغل بيرفع الراس. للطلب والاستفسار تواصلوا معنا عالواتساب وأبشروا بالخير! 🔥🇸🇾";
 const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
+
+const AD_ANGLES = [
+  "ركّز على الجودة العالية والخامة الممتازة للمنتج",
+  "ركّز على السعر المناسب والعرض اللي ما بيتعوض",
+  "ركّز على الإحساس والتجربة اللي رح يعيشها الزبون",
+  "ركّز على التميّز وإن المنتج مش موجود بكل مكان",
+  "ركّز على الهدية المثالية والمناسبات",
+  "ركّز على الاستخدام اليومي وكيف رح يسهّل حياة الزبون",
+];
+
+const buildPrompt = (productInfo: string) => {
+  const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
+  const timestamp = Date.now(); // force uniqueness
+
+  return `أنت مسوّق سوري محترف على السوشال ميديا. مطلوب منك تكتب إعلان فريد وجذاب لفيسبوك وإنستغرام.
+
+قواعد صارمة:
+- استخدم لهجة سورية طبيعية (شامية أو حلبية حسب السياق)
+- لا تستخدم أبداً عبارة "يا أكابر أحلى العروض عنا" أو أي قالب جاهز مكرر
+- كل إعلان لازم يكون مختلف تماماً عن اللي قبله
+- استخدم إيموجي بشكل ذكي (مش كتير)
+- اكتب بأسلوب يخلّي الزبون يحس إنو لازم يطلب هلق
+- خلّي الإعلان جاهز للنشر مباشرة مع فواصل أسطر واضحة
+- أضف دعوة لاتخاذ إجراء (اطلب عالواتساب أو راسلنا)
+
+الزاوية التسويقية لهالإعلان: ${angle}
+
+معلومات المنتج:
+${productInfo}
+
+رقم عشوائي للتنويع: ${timestamp}
+
+اكتب الإعلان مباشرة بدون أي مقدمة أو شرح:`;
+};
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -27,10 +60,13 @@ const AIMarketerPage = () => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
       const body = {
         contents: [{
-          parts: [{
-            text: "أنت مسوق سوري محترف. اكتب إعلان فيسبوك بلهجة سورية جذابة للمنتج التالي: " + input.trim()
-          }]
-        }]
+          parts: [{ text: buildPrompt(input.trim()) }]
+        }],
+        generationConfig: {
+          temperature: 1.2,
+          topP: 0.95,
+          topK: 40,
+        }
       };
 
       const res = await fetch(url, {
@@ -42,7 +78,12 @@ const AIMarketerPage = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        setGenerated(FALLBACK_AD);
+        console.error("Gemini API error:", data);
+        toast({
+          title: "خطأ في توليد الإعلان",
+          description: data?.error?.message || "حاول مرة تانية بعد شوي",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -50,10 +91,19 @@ const AIMarketerPage = () => {
       if (adText && adText.trim().length > 0) {
         setGenerated(adText.trim());
       } else {
-        setGenerated(FALLBACK_AD);
+        toast({
+          title: "ما قدر يولّد إعلان",
+          description: "جرّب تعدّل وصف المنتج وحاول مرة تانية",
+          variant: "destructive",
+        });
       }
-    } catch {
-      setGenerated(FALLBACK_AD);
+    } catch (err) {
+      console.error("Generate ad error:", err);
+      toast({
+        title: "خطأ بالاتصال",
+        description: "تأكد من اتصالك بالإنترنت وحاول مرة تانية",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -78,7 +128,7 @@ const AIMarketerPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold">المسوّق الذكي</h1>
-          <p className="text-sm text-muted-foreground">أنشئ إعلانات لمنتجاتك فوراً بالذكاء الاصطناعي</p>
+          <p className="text-sm text-muted-foreground">أنشئ إعلانات فريدة لمنتجاتك فوراً بالذكاء الاصطناعي</p>
         </div>
         <Button
           variant="outline"
@@ -94,13 +144,13 @@ const AIMarketerPage = () => {
       <Card className="p-4 space-y-4">
         <div className="flex items-center gap-2 text-secondary">
           <Sparkles className="h-5 w-5" />
-          <span className="font-semibold text-sm">ما المنتج الذي تريد تسويقه؟</span>
+          <span className="font-semibold text-sm">وصف المنتج (الاسم، التفاصيل، السعر...)</span>
         </div>
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="مثال: صابون حلبي طبيعي بزيت الزيتون..."
-          rows={4}
+          placeholder={"مثال: صابون حلبي طبيعي بزيت الزيتون\nالسعر: 15,000 ل.س\nمصنوع يدوياً من مواد طبيعية 100%"}
+          rows={5}
           className="resize-none"
           disabled={loading}
         />
@@ -128,10 +178,16 @@ const AIMarketerPage = () => {
               <Sparkles className="h-4 w-4 text-secondary" />
               الإعلان الجاهز
             </span>
-            <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5 text-xs h-8">
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "تم النسخ!" : "نسخ"}
-            </Button>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={handleGenerate} className="gap-1.5 text-xs h-8" title="توليد نسخة جديدة">
+                <RefreshCw className="h-3.5 w-3.5" />
+                نسخة جديدة
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5 text-xs h-8">
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "تم النسخ!" : "نسخ"}
+              </Button>
+            </div>
           </div>
           <p className="text-sm whitespace-pre-line leading-relaxed" dir="auto">{generated}</p>
         </Card>
