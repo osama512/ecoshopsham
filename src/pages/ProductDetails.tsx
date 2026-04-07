@@ -85,8 +85,8 @@ const ProductDetails = () => {
       }
       setLoading(false);
     };
-    if (id) fetch();
-  }, [id]);
+    if (productId) fetch();
+  }, [productId]);
 
   const outOfStock = (product?.stock_quantity ?? 0) <= 0;
 
