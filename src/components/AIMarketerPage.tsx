@@ -17,9 +17,26 @@ const AD_ANGLES = [
   "ركّز على الاستخدام اليومي وكيف رح يسهّل حياة الزبون",
 ];
 
+const FALLBACK_TEMPLATES = [
+  "يا أكابر، [اسم_المنتج] صار متوفر عنا وبسعر لقطة [السعر] ليرة بس! الجودة نخب أول والقطع عم تخلص بسرعة. لا تضيعوا الفرصة واطلبوا هلق بضغطة زر! 🔥🇸🇾",
+  "الفخامة بتفاصيلها.. [اسم_المنتج] قطعة بتكمل طلتك وبتعطيك الهيبة اللي بتستحقها. السعر [السعر] ليرة والجودة بتضمنلك التميز. اطلبها هلق لتوصلك لعند الباب! ✨⌚",
+  "تنبيه لعشاق الأناقة! [اسم_المنتج] وصل لعنا بكمية محدودة جداً. السعر [السعر] ليرة والتوصيل متاح. اطلب هلق قبل ما تخلص الكمية ونقولك راحت عليك! 🚀📦",
+  "بدك هدية بتبيض الوجة؟ [اسم_المنتج] هو الخيار المثالي. فخامة، جودة، وسعر مدروس [السعر] ليرة. جهز حالك لتفاجئ اللي بتحبهم واطلبها هلق! 🎁❤️",
+];
+
+const pickFallback = (productInfo: string): string => {
+  const template = FALLBACK_TEMPLATES[Math.floor(Math.random() * FALLBACK_TEMPLATES.length)];
+  // Try to extract name and price from user input
+  const lines = productInfo.split("\n").map(l => l.trim()).filter(Boolean);
+  const productName = lines[0] || "المنتج";
+  const priceMatch = productInfo.match(/(\d[\d,\.]*)/);
+  const price = priceMatch ? priceMatch[1] : "---";
+  return template.replace("[اسم_المنتج]", productName).replace("[السعر]", price);
+};
+
 const buildPrompt = (productInfo: string) => {
   const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
-  const timestamp = Date.now(); // force uniqueness
+  const timestamp = Date.now();
 
   return `أنت مسوّق سوري محترف على السوشال ميديا. مطلوب منك تكتب إعلان فريد وجذاب لفيسبوك وإنستغرام.
 
@@ -56,7 +73,14 @@ const AIMarketerPage = () => {
     setLoading(true);
     setGenerated("");
 
+    const useFallback = () => {
+      setGenerated(pickFallback(input.trim()));
+    };
+
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
       const body = {
         contents: [{
@@ -73,37 +97,26 @@ const AIMarketerPage = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
-
-      const data = await res.json();
+      clearTimeout(timeout);
 
       if (!res.ok) {
-        console.error("Gemini API error:", data);
-        toast({
-          title: "خطأ في توليد الإعلان",
-          description: data?.error?.message || "حاول مرة تانية بعد شوي",
-          variant: "destructive",
-        });
+        console.error("Gemini API error:", res.status);
+        useFallback();
         return;
       }
 
+      const data = await res.json();
       const adText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (adText && adText.trim().length > 0) {
         setGenerated(adText.trim());
       } else {
-        toast({
-          title: "ما قدر يولّد إعلان",
-          description: "جرّب تعدّل وصف المنتج وحاول مرة تانية",
-          variant: "destructive",
-        });
+        useFallback();
       }
     } catch (err) {
       console.error("Generate ad error:", err);
-      toast({
-        title: "خطأ بالاتصال",
-        description: "تأكد من اتصالك بالإنترنت وحاول مرة تانية",
-        variant: "destructive",
-      });
+      useFallback();
     } finally {
       setLoading(false);
     }
