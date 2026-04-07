@@ -83,12 +83,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Get the user's email from auth to sync to profile
+    const { data: { user: authUser } } = await supabase.auth.getUser();
     const { error: upsertError } = await (supabase.from("profiles" as any) as any).upsert(
       {
         id: userId,
         role: "merchant",
         status: "active",
         plan_type: "free",
+        email: authUser?.email || null,
         updated_at: new Date().toISOString(),
       } as any
     );
