@@ -30,17 +30,28 @@ const Signup = () => {
       }
     }
 
-    // Supabase requires email — generate placeholder for phone-only signups
-    const signupEmail = tab === "email" ? email : `${formatSyrianWhatsApp(phone)}@phone.syriabiz.local`;
+    // Supabase requires email — generate unique placeholder for phone-only signups
+    const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const signupEmail = tab === "email" ? email : `${formatSyrianWhatsApp(phone)}_${uniqueId}@phone.syriabiz.local`;
 
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { signup_method: tab === "phone" ? "phone" : "email" },
+      },
     });
 
     if (error) {
-      toast({ title: "فشل إنشاء الحساب", description: error.message, variant: "destructive" });
+      const isRateLimit = error.message?.toLowerCase().includes("rate limit") || error.status === 429;
+      toast({
+        title: isRateLimit ? "تم تجاوز الحد المسموح" : "فشل إنشاء الحساب",
+        description: isRateLimit
+          ? "لقد قمت بعدة محاولات، يرجى الانتظار قليلاً أو التواصل مع الدعم"
+          : error.message,
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
