@@ -46,13 +46,6 @@ const ProductDetails = () => {
         prod = all?.find((p: any) => p.id.replace(/-/g, "").startsWith(productId)) || null;
       }
 
-      // Dummy reference to satisfy original .single() flow
-      const __unused = await supabase
-        .from("products")
-        .select("id")
-        .eq("id", "00000000-0000-0000-0000-000000000000")
-        .eq("is_visible", true)
-        .single();
 
       if (!prod) {
         setLoading(false);

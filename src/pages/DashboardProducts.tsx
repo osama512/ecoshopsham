@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Product } from "@/integrations/supabase/db-types";
 import { useToast } from "@/hooks/use-toast";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import { productSlug } from "@/lib/slug";
 
 const FREE_PLAN_LIMIT = 10;
 const MAX_IMAGES = 5;
@@ -281,9 +282,9 @@ const DashboardProducts = () => {
   };
 
   const handleShare = (product: Product) => {
-    const url = `${window.location.origin}/s/${user?.id}`;
+    const url = `${window.location.origin}/p/${productSlug(product.id, product.name)}`;
     navigator.clipboard.writeText(url);
-    toast({ title: "تم نسخ رابط المتجر! ✅" });
+    toast({ title: "تم نسخ رابط المنتج! ✅", description: url });
   };
 
   return (
