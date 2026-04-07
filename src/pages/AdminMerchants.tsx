@@ -13,6 +13,8 @@ interface MerchantProfile {
   id: string;
   store_name: string | null;
   whatsapp_number: string | null;
+  email: string | null;
+  phone: string | null;
   created_at: string | null;
   role: string | null;
   status: string | null;
@@ -23,27 +25,6 @@ const PLAN_OPTIONS = [
   { value: "free", label: "مجانية" },
   { value: "pro", label: "Pro ⭐" },
   { value: "enterprise", label: "Enterprise 🏢" },
-];
-
-const DUMMY_MERCHANTS: MerchantProfile[] = [
-  {
-    id: "dummy-merchant-1",
-    store_name: "متجر تجريبي",
-    whatsapp_number: "0999999999",
-    created_at: new Date().toISOString(),
-    role: "merchant",
-    status: "active",
-    plan_type: "free",
-  },
-  {
-    id: "dummy-merchant-2",
-    store_name: null,
-    whatsapp_number: "0988888888",
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    role: "merchant",
-    status: "active",
-    plan_type: "free",
-  },
 ];
 
 const TRIAL_DAYS = 7;
@@ -57,7 +38,8 @@ const getTrialDaysLeft = (createdAt: string | null) => {
 const getMerchantDisplayName = (merchant: MerchantProfile) =>
   merchant.store_name?.trim() || "إعداد المتجر قيد الانتظار";
 
-const isDummyMerchant = (merchantId: string) => merchantId.startsWith("dummy-");
+const getMerchantContact = (merchant: MerchantProfile) =>
+  merchant.phone || merchant.email || merchant.whatsapp_number || "—";
 
 const getMerchantStatus = (
   merchant: MerchantProfile
@@ -65,11 +47,9 @@ const getMerchantStatus = (
   if ((merchant.status || "active") === "suspended") {
     return { label: "موقوف", variant: "destructive" };
   }
-
   if (merchant.plan_type === "pro" || merchant.plan_type === "enterprise") {
     return { label: "نشط", variant: "outline" };
   }
-
   return getTrialDaysLeft(merchant.created_at) > 0
     ? { label: "تجريبي", variant: "secondary" }
     : { label: "انتهت التجربة", variant: "destructive" };
@@ -80,13 +60,11 @@ const AdminMerchants = () => {
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [debugAlert, setDebugAlert] = useState<string | null>(null);
-  const [usingDummyData, setUsingDummyData] = useState(false);
   const { toast } = useToast();
 
   const fetchMerchants = async () => {
     setLoading(true);
     setDebugAlert(null);
-    setUsingDummyData(false);
 
     await supabase.auth.getSession();
 
@@ -97,21 +75,16 @@ const AdminMerchants = () => {
     console.log("[AdminMerchants] Raw profiles data:", data);
 
     if (error) {
-      console.error("[AdminMerchants] Failed to fetch merchant profiles:", error);
+      console.error("[AdminMerchants] Failed to fetch:", error);
       toast({ title: "خطأ في جلب التجار", description: error.message, variant: "destructive" });
       setDebugAlert(`Supabase error: ${error.message}`);
-      setUsingDummyData(true);
-      setMerchants(DUMMY_MERCHANTS);
+      setMerchants([]);
     } else {
       const merchantRows = (data as MerchantProfile[]) ?? [];
-
       if (merchantRows.length === 0) {
-        setDebugAlert("Displaying dummy data to verify the table UI works.");
-        setUsingDummyData(true);
-        setMerchants(DUMMY_MERCHANTS);
-      } else {
-        setMerchants(merchantRows);
+        setDebugAlert("لا يوجد تجار مسجلين حالياً");
       }
+      setMerchants(merchantRows);
     }
 
     setLoading(false);
@@ -158,30 +131,27 @@ const AdminMerchants = () => {
     );
   }
 
-  const totalMerchants = usingDummyData ? 0 : merchants.length;
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold">التجار</h1>
-        <p className="text-sm text-muted-foreground">{totalMerchants} تاجر مسجّل</p>
+        <p className="text-sm text-muted-foreground">{merchants.length} تاجر مسجّل</p>
       </div>
 
-      {usingDummyData ? (
+      {debugAlert && (
         <Alert variant="destructive" className="border-2">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle className="text-base">No data found in Supabase</AlertTitle>
-          <AlertDescription>
-            {debugAlert ?? "Displaying dummy data to verify the table UI works."}
-          </AlertDescription>
+          <AlertTitle>تنبيه</AlertTitle>
+          <AlertDescription>{debugAlert}</AlertDescription>
         </Alert>
-      ) : null}
+      )}
 
       <Card className="hidden overflow-hidden overflow-x-auto sm:block">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>اسم المتجر</TableHead>
+              <TableHead>البريد / الهاتف</TableHead>
               <TableHead>واتساب</TableHead>
               <TableHead>الباقة</TableHead>
               <TableHead>التجربة</TableHead>
@@ -196,17 +166,22 @@ const AdminMerchants = () => {
               const daysLeft = getTrialDaysLeft(merchant.created_at);
               const isPaid = merchant.plan_type === "pro" || merchant.plan_type === "enterprise";
               const statusBadge = getMerchantStatus(merchant);
-              const isDebugRow = usingDummyData || isDummyMerchant(merchant.id);
 
               return (
                 <TableRow key={merchant.id}>
                   <TableCell className="font-medium">{getMerchantDisplayName(merchant)}</TableCell>
+                  <TableCell className="text-sm">
+                    <div className="flex flex-col gap-0.5">
+                      {merchant.email && <span className="text-muted-foreground">{merchant.email}</span>}
+                      {merchant.phone && <span className="font-mono text-xs">{merchant.phone}</span>}
+                      {!merchant.email && !merchant.phone && <span className="text-muted-foreground">—</span>}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-mono text-sm">{merchant.whatsapp_number || "—"}</TableCell>
                   <TableCell>
                     <Select
                       value={merchant.plan_type || "free"}
                       onValueChange={(value) => updatePlan(merchant.id, value)}
-                      disabled={isDebugRow}
                     >
                       <SelectTrigger className="h-8 w-28 text-xs">
                         <SelectValue />
@@ -228,9 +203,7 @@ const AdminMerchants = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusBadge.variant} className="text-xs">
-                      {statusBadge.label}
-                    </Badge>
+                    <Badge variant={statusBadge.variant} className="text-xs">{statusBadge.label}</Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {merchant.created_at ? new Date(merchant.created_at).toLocaleDateString("ar-SY") : "—"}
@@ -240,7 +213,7 @@ const AdminMerchants = () => {
                       variant={isSuspended ? "default" : "destructive"}
                       size="sm"
                       className="text-xs"
-                      disabled={isDebugRow || togglingId === merchant.id}
+                      disabled={togglingId === merchant.id}
                       onClick={() => toggleStatus(merchant)}
                     >
                       {togglingId === merchant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}
@@ -259,7 +232,6 @@ const AdminMerchants = () => {
           const daysLeft = getTrialDaysLeft(merchant.created_at);
           const isPaid = merchant.plan_type === "pro" || merchant.plan_type === "enterprise";
           const statusBadge = getMerchantStatus(merchant);
-          const isDebugRow = usingDummyData || isDummyMerchant(merchant.id);
 
           return (
             <Card key={`${merchant.id}-mobile`} className="space-y-3 p-4">
@@ -273,16 +245,17 @@ const AdminMerchants = () => {
                   ) : (
                     <Badge variant="destructive" className="text-xs">منتهية</Badge>
                   )}
-                  <Badge variant={statusBadge.variant} className="text-xs">
-                    {statusBadge.label}
-                  </Badge>
+                  <Badge variant={statusBadge.variant} className="text-xs">{statusBadge.label}</Badge>
                 </div>
               </div>
-              <p className="font-mono text-xs text-muted-foreground">{merchant.whatsapp_number || "—"}</p>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                {merchant.email && <p>{merchant.email}</p>}
+                {merchant.phone && <p className="font-mono">{merchant.phone}</p>}
+                {merchant.whatsapp_number && <p className="font-mono">واتساب: {merchant.whatsapp_number}</p>}
+              </div>
               <Select
                 value={merchant.plan_type || "free"}
                 onValueChange={(value) => updatePlan(merchant.id, value)}
-                disabled={isDebugRow}
               >
                 <SelectTrigger className="h-8 w-full text-xs">
                   <SelectValue />
@@ -301,7 +274,7 @@ const AdminMerchants = () => {
                   variant={isSuspended ? "default" : "destructive"}
                   size="sm"
                   className="text-xs"
-                  disabled={isDebugRow || togglingId === merchant.id}
+                  disabled={togglingId === merchant.id}
                   onClick={() => toggleStatus(merchant)}
                 >
                   {togglingId === merchant.id ? <Loader2 className="h-3 w-3 animate-spin" /> : isSuspended ? "تفعيل" : "إيقاف"}

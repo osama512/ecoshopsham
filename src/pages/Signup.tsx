@@ -7,9 +7,11 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus } from "lucide-react";
+import { isValidSyrianPhone } from "@/lib/phone";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,6 +20,12 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    if (phone && !isValidSyrianPhone(phone)) {
+      toast({ title: "رقم الهاتف غير صالح", description: "يرجى إدخال رقم سوري صحيح (مثال: 0912345678 أو +963912345678)", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -34,6 +42,8 @@ const Signup = () => {
           role: "merchant",
           status: "active",
           plan_type: "free",
+          email: email,
+          phone: phone || null,
           updated_at: new Date().toISOString(),
         } as any);
 
@@ -66,7 +76,20 @@ const Signup = () => {
         <Card className="p-6">
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Label htmlFor="phone">رقم الهاتف</Label>
+              <Input
+                id="phone"
+                type="tel"
+                dir="ltr"
+                placeholder="09xxxxxxxx"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="text-left"
+              />
+              <p className="text-xs text-muted-foreground">صيغة سورية: 09xx أو +963</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">البريد الإلكتروني <span className="text-destructive">*</span></Label>
               <Input
                 id="email"
                 type="email"
@@ -77,7 +100,7 @@ const Signup = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">كلمة المرور</Label>
+              <Label htmlFor="password">كلمة المرور <span className="text-destructive">*</span></Label>
               <Input
                 id="password"
                 type="password"
