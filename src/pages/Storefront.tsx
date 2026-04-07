@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import { productSlug } from "@/lib/slug";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -116,7 +117,7 @@ const Storefront = () => {
                   )}
                   <div
                     className="cursor-pointer"
-                    onClick={() => navigate(`/product/${product.id}`)}
+                    onClick={() => navigate(`/p/${productSlug(product.id, product.name)}`)}
                   >
                     <ProductImageCarousel
                       images={product.images || []}
@@ -128,7 +129,7 @@ const Storefront = () => {
                   <div className="p-3 flex flex-col flex-1 gap-2">
                     <h3
                       className="font-semibold text-sm leading-tight cursor-pointer hover:text-secondary transition-colors"
-                      onClick={() => navigate(`/product/${product.id}`)}
+                      onClick={() => navigate(`/p/${productSlug(product.id, product.name)}`)}
                     >{product.name}</h3>
                     {product.description && (
                       <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{product.description}</p>
