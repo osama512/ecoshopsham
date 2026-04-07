@@ -7,12 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import { extractIdFromSlug } from "@/lib/slug";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
 
 const ProductDetails = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug, id: legacyId } = useParams<{ slug?: string; id?: string }>();
+  const productId = slug ? extractIdFromSlug(slug) : legacyId;
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,12 +27,25 @@ const ProductDetails = () => {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const { data: prod } = await supabase
+      // Try exact UUID match first, then short-id prefix match
+      let prod: any = null;
+      const { data: exact } = await supabase
         .from("products")
         .select("*")
-        .eq("id", id!)
+        .eq("id", productId!)
         .eq("is_visible", true)
-        .single();
+        .maybeSingle();
+      prod = exact;
+
+      if (!prod && productId) {
+        // Short ID prefix: query all visible and find match
+        const { data: all } = await supabase
+          .from("products")
+          .select("*")
+          .eq("is_visible", true);
+        prod = all?.find((p: any) => p.id.replace(/-/g, "").startsWith(productId)) || null;
+      }
+
 
       if (!prod) {
         setLoading(false);
@@ -63,8 +78,8 @@ const ProductDetails = () => {
       }
       setLoading(false);
     };
-    if (id) fetch();
-  }, [id]);
+    if (productId) fetch();
+  }, [productId]);
 
   const outOfStock = (product?.stock_quantity ?? 0) <= 0;
 

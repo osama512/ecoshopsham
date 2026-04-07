@@ -48,6 +48,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/s/:storeId" element={<Storefront />} />
+            <Route path="/p/:slug" element={<ProductDetails />} />
+            {/* Legacy redirect */}
             <Route path="/product/:id" element={<ProductDetails />} />
             <Route
               path="/dashboard"
