@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -190,11 +189,14 @@ const CheckoutSettings = () => {
                     </Button>
                   )}
                 </div>
-                <Switch
-                  checked={method.enabled}
-                  onCheckedChange={() => toggleMethod(method.id)}
-                  className="shrink-0"
-                />
+                <Button
+                  variant={method.enabled ? "default" : "outline"}
+                  size="sm"
+                  className={method.enabled ? "shrink-0 bg-green-600 hover:bg-green-700 text-white" : "shrink-0"}
+                  onClick={() => toggleMethod(method.id)}
+                >
+                  {method.enabled ? "مفعل ✓" : "تفعيل"}
+                </Button>
               </div>
               {method.enabled && (
                 <Input
