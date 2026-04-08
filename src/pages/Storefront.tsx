@@ -23,6 +23,7 @@ const Storefront = () => {
   const [suspended, setSuspended] = useState(false);
   const [trialExpired, setTrialExpired] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [resolvedMerchantId, setResolvedMerchantId] = useState<string>("");
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -87,6 +88,8 @@ const Storefront = () => {
           }
         }
       }
+
+      setResolvedMerchantId(merchantId);
 
       const { data, error } = await supabase
         .from("products")
@@ -190,12 +193,12 @@ const Storefront = () => {
         مدعوم من Syria<span className="text-secondary font-semibold">Biz</span>
       </footer>
 
-      {selectedProduct && storeId && (
+      {selectedProduct && resolvedMerchantId && (
         <OrderFormModal
           open={!!selectedProduct}
           onOpenChange={(v) => { if (!v) setSelectedProduct(null); }}
           product={selectedProduct}
-          merchantId={storeId}
+          merchantId={resolvedMerchantId}
           whatsapp={whatsapp}
         />
       )}

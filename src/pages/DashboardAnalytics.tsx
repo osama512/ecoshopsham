@@ -3,13 +3,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Lock, ShoppingCart, DollarSign, Clock, TrendingUp, Package } from "lucide-react";
+import { ShoppingCart, DollarSign, Clock, TrendingUp, Package } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const DashboardAnalytics = () => {
   const { user } = useAuth();
-  const [planType, setPlanType] = useState<string>("free");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, pendingOrders: 0 });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -20,20 +19,7 @@ const DashboardAnalytics = () => {
     if (!user) return;
     const load = async () => {
       setLoading(true);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("plan_type")
-        .eq("id", user.id)
-        .single();
-      const plan = (profile as any)?.plan_type ?? "free";
-      setPlanType(plan);
 
-      if (plan !== "pro") {
-        setLoading(false);
-        return;
-      }
-
-      // Fetch all merchant orders
       const { data: orders } = await supabase
         .from("orders")
         .select("*")
@@ -90,33 +76,6 @@ const DashboardAnalytics = () => {
     );
   }
 
-  if (planType !== "pro") {
-    return (
-      <div className="relative min-h-[60vh] flex items-center justify-center">
-        {/* Blurred background */}
-        <div className="absolute inset-0 grid grid-cols-2 gap-4 p-4 opacity-30 blur-sm pointer-events-none select-none">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="h-32" />
-          ))}
-          <Card className="col-span-2 h-48" />
-        </div>
-        {/* Lock overlay */}
-        <div className="relative z-10 text-center space-y-4 max-w-sm px-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Lock className="h-8 w-8 text-primary" />
-          </div>
-          <h2 className="text-xl font-bold">ميزة حصرية لباقة Pro</h2>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            هذه الميزة متاحة فقط في باقة Pro. قم بالترقية لمتابعة مبيعاتك بدقة!
-          </p>
-          <Badge variant="secondary" className="text-sm px-4 py-1">
-            تواصل مع الإدارة للترقية
-          </Badge>
-        </div>
-      </div>
-    );
-  }
-
   const formatPrice = (v: number) => v.toLocaleString("ar-SY") + " ل.س";
 
   return (
@@ -136,7 +95,7 @@ const DashboardAnalytics = () => {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg bg-green-500/10 p-2"><DollarSign className="h-5 w-5 text-green-600" /></div>
+            <div className="rounded-lg bg-primary/10 p-2"><DollarSign className="h-5 w-5 text-primary" /></div>
             <div>
               <p className="text-xs text-muted-foreground">إجمالي الإيرادات</p>
               <p className="text-xl font-bold">{formatPrice(stats.totalRevenue)}</p>
@@ -145,7 +104,7 @@ const DashboardAnalytics = () => {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg bg-yellow-500/10 p-2"><Clock className="h-5 w-5 text-yellow-600" /></div>
+            <div className="rounded-lg bg-primary/10 p-2"><Clock className="h-5 w-5 text-primary" /></div>
             <div>
               <p className="text-xs text-muted-foreground">طلبات معلّقة</p>
               <p className="text-xl font-bold">{stats.pendingOrders}</p>
@@ -154,7 +113,7 @@ const DashboardAnalytics = () => {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg bg-purple-500/10 p-2"><TrendingUp className="h-5 w-5 text-purple-600" /></div>
+            <div className="rounded-lg bg-primary/10 p-2"><TrendingUp className="h-5 w-5 text-primary" /></div>
             <div>
               <p className="text-xs text-muted-foreground">المنتج الأكثر طلباً</p>
               <p className="text-sm font-bold truncate max-w-[120px]">{topProduct ?? "—"}</p>
