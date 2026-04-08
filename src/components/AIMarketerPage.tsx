@@ -51,7 +51,7 @@ const AIMarketerPage = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, storeSlug } = useAuth();
 
   const showGenerateError = (message: string) => {
     setGenerated("");
