@@ -31,21 +31,18 @@ const Login = () => {
 
     let loginEmail = email;
 
-    // If logging in with phone, look up email from profiles
+    // If logging in with phone, build the same deterministic email used at signup
     if (!loginEmail && phone) {
-      const cleaned = phone.replace(/[\s\-\+]/g, "").replace(/[^0-9]/g, "");
-      const { data: profileData } = await (supabase.from("profiles" as any) as any)
-        .select("email")
-        .or(`phone.eq.${cleaned},phone.eq.0${cleaned.replace(/^963/, "")},phone.eq.963${cleaned.replace(/^0/, "")}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (!profileData?.email) {
-        toast({ title: "لم يتم العثور على حساب بهذا الرقم", variant: "destructive" });
-        setLoading(false);
-        return;
+      const cleaned = phone.replace(/[\s\-\+\(\)]/g, "").replace(/[^0-9]/g, "");
+      // Convert Syrian local 09xx → 9639xx
+      let normalized = cleaned;
+      if (normalized.startsWith("09")) {
+        normalized = "963" + normalized.slice(1);
       }
-      loginEmail = profileData.email;
+      if (normalized.startsWith("00")) {
+        normalized = normalized.slice(2);
+      }
+      loginEmail = `${normalized}@syriabiz.local`;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
