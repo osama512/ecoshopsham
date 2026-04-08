@@ -5,40 +5,22 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Link2, Check, Crown, Sparkles, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, Link2, Check, Crown, Sparkles } from "lucide-react";
 import CheckoutSettings from "@/components/CheckoutSettings";
 
-interface PaymentMethodEntry {
-  id: string;
-  name: string;
-  details: string;
-  enabled: boolean;
-}
-
-const DEFAULT_METHODS: PaymentMethodEntry[] = [
-  { id: "syriatel_cash", name: "سيريتل كاش / MTN كاش", details: "", enabled: false },
-  { id: "haram_transfer", name: "شركة الهرم / الفؤاد", details: "", enabled: false },
-  { id: "cash", name: "دفع عند الاستلام", details: "", enabled: true },
-];
-
 const DashboardSettings = () => {
-  const { user, storeSlug: contextSlug } = useAuth();
+  const { user, storeSlug: contextSlug, refetchProfile } = useAuth();
   const { toast } = useToast();
   const [storeName, setStoreName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodEntry[]>(DEFAULT_METHODS);
   const [storeSlug, setStoreSlug] = useState("");
   const [planType, setPlanType] = useState("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-
-  // Custom method input
-  const [newMethodName, setNewMethodName] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -55,65 +37,11 @@ const DashboardSettings = () => {
         setWhatsapp((data as any).whatsapp_number || "");
         setPlanType((data as any).plan_type || "free");
         setStoreSlug((data as any).store_slug || "");
-
-        // Load payment methods from payment_instructions (stored as JSON string) or legacy text
-        const instructions = (data as any).payment_instructions || "";
-        try {
-          const parsed = JSON.parse(instructions);
-          if (Array.isArray(parsed)) {
-            // Merge with defaults to ensure default methods always appear
-            const merged = DEFAULT_METHODS.map((dm) => {
-              const saved = parsed.find((p: PaymentMethodEntry) => p.id === dm.id);
-              return saved ? { ...dm, ...saved } : dm;
-            });
-            // Add custom methods
-            const customMethods = parsed.filter(
-              (p: PaymentMethodEntry) => !DEFAULT_METHODS.some((dm) => dm.id === p.id)
-            );
-            setPaymentMethods([...merged, ...customMethods]);
-          }
-        } catch {
-          // Legacy: plain text instructions - keep defaults, put text as details on first enabled
-          if (instructions.trim()) {
-            setPaymentMethods(
-              DEFAULT_METHODS.map((m, i) =>
-                i === 0 ? { ...m, enabled: true, details: instructions } : m
-              )
-            );
-          }
-        }
       }
       setLoading(false);
     };
     fetchProfile();
   }, [user]);
-
-  const toggleMethod = (id: string) => {
-    setPaymentMethods((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m))
-    );
-  };
-
-  const updateMethodDetails = (id: string, details: string) => {
-    setPaymentMethods((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, details } : m))
-    );
-  };
-
-  const addCustomMethod = () => {
-    if (!newMethodName.trim()) return;
-    setPaymentMethods((prev) => [
-      ...prev,
-      { id: `custom_${Date.now()}`, name: newMethodName.trim(), details: "", enabled: true },
-    ]);
-    setNewMethodName("");
-  };
-
-  const removeMethod = (id: string) => {
-    setPaymentMethods((prev) => prev.filter((m) => m.id !== id));
-  };
-
-  const isCustomMethod = (id: string) => !DEFAULT_METHODS.some((dm) => dm.id === id);
 
   const handleSave = async () => {
     if (!user) return;
@@ -121,7 +49,6 @@ const DashboardSettings = () => {
 
     const slugValue = storeSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-") || null;
 
-    // Check slug uniqueness
     if (slugValue) {
       const { data: existing } = await supabase
         .from("profiles" as any)
@@ -137,16 +64,12 @@ const DashboardSettings = () => {
       }
     }
 
-    // Store payment methods as JSON in payment_instructions
-    const paymentData = JSON.stringify(paymentMethods);
-
     const { error } = await supabase
       .from("profiles" as any)
       .upsert({
         id: user.id,
         store_name: storeName.trim(),
         whatsapp_number: whatsapp.trim(),
-        payment_instructions: paymentData,
         store_slug: slugValue,
         updated_at: new Date().toISOString(),
       } as any);
@@ -155,6 +78,7 @@ const DashboardSettings = () => {
       toast({ title: "خطأ في الحفظ", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "تم حفظ الإعدادات! ✅" });
+      await refetchProfile();
     }
     setSaving(false);
   };
@@ -198,59 +122,6 @@ const DashboardSettings = () => {
           <Label htmlFor="whatsapp">رقم الواتساب</Label>
           <Input id="whatsapp" placeholder="+963912345678" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
           <p className="text-xs text-muted-foreground">أضف رمز الدولة. سيستخدمه الزبائن للطلب.</p>
-        </div>
-
-        {/* Dynamic Payment Methods */}
-        <div className="space-y-3">
-          <Label>طرق الدفع المقبولة</Label>
-          <p className="text-xs text-muted-foreground">فعّل طرق الدفع وأضف تفاصيل الحساب لكل طريقة. ستظهر للزبائن عند الطلب.</p>
-          <div className="space-y-3">
-            {paymentMethods.map((method) => (
-              <div key={method.id} className="rounded-lg border p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={method.enabled}
-                      onCheckedChange={() => toggleMethod(method.id)}
-                    />
-                    <span className="text-sm font-medium">{method.name}</span>
-                  </div>
-                  {isCustomMethod(method.id) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => removeMethod(method.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-                {method.enabled && (
-                  <Input
-                    placeholder="تفاصيل الحساب (اختياري) — مثال: الرقم: 0988123456"
-                    value={method.details}
-                    onChange={(e) => updateMethodDetails(method.id, e.target.value)}
-                    className="text-sm"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Add custom method */}
-          <div className="flex gap-2">
-            <Input
-              placeholder="اسم طريقة دفع أخرى..."
-              value={newMethodName}
-              onChange={(e) => setNewMethodName(e.target.value)}
-              className="text-sm"
-            />
-            <Button variant="outline" size="sm" onClick={addCustomMethod} disabled={!newMethodName.trim()} className="gap-1 shrink-0">
-              <Plus className="h-3.5 w-3.5" />
-              إضافة
-            </Button>
-          </div>
         </div>
 
         <div className="space-y-2">
