@@ -51,7 +51,7 @@ const AIMarketerPage = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, storeSlug } = useAuth();
 
   const showGenerateError = (message: string) => {
     setGenerated("");
@@ -116,7 +116,8 @@ const AIMarketerPage = () => {
   };
 
   const handleCopyStoreLink = () => {
-    const link = `${window.location.origin}/s/${user?.id || "store"}`;
+    const storePath = storeSlug || user?.id?.replace(/-/g, "").slice(0, 6) || "store";
+    const link = `${window.location.origin}/s/${storePath}`;
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
     toast({ title: "تم نسخ رابط المتجر! ✅" });
