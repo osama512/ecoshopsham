@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock, Percent, Trash2, Plus, MessageCircle, Users } from "lucide-react";
+import { Percent, Trash2, Plus, MessageCircle, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Coupon {
@@ -20,7 +20,6 @@ interface Coupon {
 const DashboardMarketing = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [planType, setPlanType] = useState<string>("free");
   const [loading, setLoading] = useState(true);
 
   // Coupons
@@ -36,16 +35,7 @@ const DashboardMarketing = () => {
     if (!user) return;
     const load = async () => {
       setLoading(true);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("plan_type")
-        .eq("id", user.id)
-        .single();
-      setPlanType((profile as any)?.plan_type ?? "free");
-
-      if ((profile as any)?.plan_type === "pro") {
-        await Promise.all([fetchCoupons(), fetchCustomers()]);
-      }
+      await Promise.all([fetchCoupons(), fetchCustomers()]);
       setLoading(false);
     };
 
@@ -99,7 +89,6 @@ const DashboardMarketing = () => {
     toast({ title: "تم إنشاء الكوبون بنجاح ✅" });
     setNewCode("");
     setNewDiscount("");
-    // Refresh
     const { data } = await (supabase.from("coupons") as any)
       .select("*")
       .eq("merchant_id", user!.id)
@@ -127,31 +116,6 @@ const DashboardMarketing = () => {
     );
   }
 
-  if (planType !== "pro") {
-    return (
-      <div className="relative min-h-[60vh] flex items-center justify-center">
-        <div className="absolute inset-0 grid grid-cols-2 gap-4 p-4 opacity-30 blur-sm pointer-events-none select-none">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="h-32" />
-          ))}
-          <Card className="col-span-2 h-48" />
-        </div>
-        <div className="relative z-10 text-center space-y-4 max-w-sm px-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Lock className="h-8 w-8 text-primary" />
-          </div>
-          <h2 className="text-xl font-bold">ميزة حصرية لباقة Pro</h2>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            هذه الميزة متاحة فقط في باقة Pro. قم بالترقية لإطلاق حملاتك التسويقية!
-          </p>
-          <Badge variant="secondary" className="text-sm px-4 py-1">
-            تواصل مع الإدارة للترقية
-          </Badge>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">أدوات التسويق</h2>
@@ -165,7 +129,6 @@ const DashboardMarketing = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add coupon form */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 space-y-1">
               <Label className="text-xs">رمز الكوبون</Label>
@@ -195,7 +158,6 @@ const DashboardMarketing = () => {
             </div>
           </div>
 
-          {/* Coupons list */}
           {coupons.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">لا توجد كوبونات بعد</p>
           ) : (
