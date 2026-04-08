@@ -6,26 +6,42 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `أنت مسوّق سوري محترف ومبدع على السوشال ميديا، متخصص بكتابة إعلانات طويلة ومفصّلة وجذابة لفيسبوك وإنستغرام.
+const SYSTEM_PROMPT = `You are a high-end Syrian marketing expert. Write a Comprehensive, Long-form (200+ words) advertisement. Structure it into 4 detailed sections:
+
+1. The Hook: An emotional/engaging opening in Syrian dialect.
+2. The Story: A deep dive into the product's value and how it solves the customer's problem (2 long paragraphs).
+3. Detailed Specs: Use bullet points to elaborate on EVERY detail provided in the input.
+4. The Closing: A strong call to action with price and delivery info.
 
 قواعد صارمة:
-- اكتب إعلان طويل ومفصّل (200 كلمة على الأقل) — لا تختصر أبداً
-- لا تلخّص — اسرد قصة جذابة أو اكتب عرض احترافي مفصّل للمنتج
-- استخدم كل التفاصيل اللي بيعطيك ياها المستخدم (المواد، الحركة، المنشأ، الميزات...)
-- استخدم لهجة سورية طبيعية (شامية أو حلبية حسب السياق)
-- لا تستخدم أبداً عبارة "يا أكابر أحلى العروض عنا" أو أي قالب جاهز مكرر
+- اكتب بلهجة سورية طبيعية (شامية أو حلبية حسب السياق)
+- Be verbose, descriptive, and use rich Syrian vocabulary. Avoid short/lazy summaries.
 - استخدم إيموجي بشكل ذكي ومتنوع
-- اكتب الإعلان جاهز للنشر مباشرة
+- لا تكتب عناوين الأقسام (لا تكتب "Hook:" أو "القصة:") — ادمجهم بشكل طبيعي
+- اكتب الإعلان جاهز للنشر مباشرة على فيسبوك أو إنستغرام
+- إذا ما كان السعر مذكور، اكتب "تواصل معنا لمعرفة السعر 📩"
+- لا تستخدم عبارة "يا أكابر أحلى العروض عنا" أبداً`;
 
-البنية المطلوبة للإعلان (التزم فيها دائماً):
-
-1. 🔥 Hook (افتتاحية جذابة): جملة سورية قوية تلفت الانتباه فوراً
-2. 📝 Body (الجسم): فقرة أو فقرتين تحكي قصة المنتج، فوائده، وليش الزبون لازم يقتنيه. استخدم وصف عاطفي وتفاصيل حسية
-3. 📋 Specs (المواصفات): نقاط واضحة (bullet points) للمواصفات التقنية والتفاصيل المهمة
-4. 💰 Price & Offer (السعر والعرض): اذكر السعر بوضوح مع معلومات الشحن. إذا ما كان السعر مذكور بالمعلومات، اكتب "تواصل معنا لمعرفة السعر 📩"
-5. 📲 CTA (دعوة لاتخاذ إجراء): خاتمة قوية تدفع الزبون للطلب فوراً عبر واتساب
-
-ملاحظة مهمة: اكتب الإعلان مباشرة بدون أي مقدمة أو شرح أو عناوين أقسام (لا تكتب "Hook:" أو "Body:" — ادمجهم بشكل طبيعي)`;
+async function callAI(prompt: string, apiKey: string, signal: AbortSignal) {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    signal,
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      temperature: 1.0,
+      max_tokens: 1024,
+    }),
+  });
+  return response;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -50,59 +66,63 @@ serve(async (req) => {
       );
     }
 
-    const userPrompt = `الزاوية التسويقية لهالإعلان: ${angle || "ركّز على الجودة"}
+    const userPrompt = `الزاوية التسويقية: ${angle || "ركّز على الجودة والقيمة"}
 
-معلومات المنتج المطلوب الإعلان عنه:
+معلومات المنتج:
 ${productDescription.trim()}
 
-تعليمات إضافية:
-- استخدم كل التفاصيل المذكورة أعلاه بالإعلان
+تعليمات:
+- استخدم كل التفاصيل المذكورة أعلاه
 - إذا ما كان في سعر مذكور، اكتب "تواصل معنا لمعرفة السعر 📩"
 - اكتب إعلان طويل ومفصّل (200 كلمة على الأقل)
 - رقم عشوائي للتنويع: ${Date.now()}
 
 اكتب الإعلان مباشرة:`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 1.1,
-        max_tokens: 1500,
-      }),
-    });
+    // Attempt 1: 2-second timeout
+    let ad = "";
+    let success = false;
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "rate_limited" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    for (let attempt = 0; attempt < 2 && !success; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), attempt === 0 ? 12000 : 15000);
+
+        const response = await callAI(userPrompt, LOVABLE_API_KEY, controller.signal);
+        clearTimeout(timeout);
+
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "payment_required" }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.choices?.[0]?.message?.content || "";
+          if (text.trim().length > 30) {
+            ad = text.trim();
+            success = true;
+          }
+        }
+      } catch (e) {
+        console.error(`Attempt ${attempt + 1} failed:`, e);
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "payment_required" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(
-        JSON.stringify({ error: "ai_error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
-    const data = await response.json();
-    const ad = data.choices?.[0]?.message?.content || "";
+    if (success) {
+      return new Response(JSON.stringify({ ad }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    return new Response(JSON.stringify({ ad }), {
+    // API completely unreachable — signal fallback
+    return new Response(JSON.stringify({ ad: "", fallback: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
