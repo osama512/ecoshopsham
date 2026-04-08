@@ -22,8 +22,30 @@ const SYSTEM_PROMPT = `You are a high-end Syrian marketing expert. Write a Compr
 - إذا ما كان السعر مذكور، اكتب "تواصل معنا لمعرفة السعر 📩"
 - لا تستخدم عبارة "يا أكابر أحلى العروض عنا" أبداً`;
 
+const jsonResponse = (payload: Record<string, unknown>) =>
+  new Response(JSON.stringify(payload), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 200,
+  });
+
+async function parseApiError(response: Response) {
+  const raw = await response.text();
+
+  if (!raw.trim()) {
+    return `API error: ${response.status}`;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const message = parsed?.error?.message ?? parsed?.error ?? parsed?.message ?? parsed?.detail ?? raw;
+    return typeof message === "string" && message.trim() ? message : raw;
+  } catch {
+    return raw;
+  }
+}
+
 async function callAI(prompt: string, apiKey: string, signal: AbortSignal) {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -40,7 +62,6 @@ async function callAI(prompt: string, apiKey: string, signal: AbortSignal) {
       max_tokens: 1024,
     }),
   });
-  return response;
 }
 
 serve(async (req) => {
@@ -52,18 +73,12 @@ serve(async (req) => {
     const { productDescription, angle } = await req.json();
 
     if (!productDescription || typeof productDescription !== "string" || productDescription.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Product description is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Product description is required" });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY is not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "API Key Missing" });
     }
 
     const userPrompt = `الزاوية التسويقية: ${angle || "ركّز على الجودة والقيمة"}
@@ -79,57 +94,52 @@ ${productDescription.trim()}
 
 اكتب الإعلان مباشرة:`;
 
-    // Attempt 1: 2-second timeout
-    let ad = "";
-    let success = false;
+    let lastError = "Network Error";
 
-    for (let attempt = 0; attempt < 2 && !success; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), attempt === 0 ? 12000 : 15000);
-
         const response = await callAI(userPrompt, LOVABLE_API_KEY, controller.signal);
         clearTimeout(timeout);
 
         if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "rate_limited" }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        if (response.status === 402) {
-          return new Response(JSON.stringify({ error: "payment_required" }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return jsonResponse({ error: "Rate Limit Exceeded" });
         }
 
-        if (response.ok) {
-          const data = await response.json();
-          const text = data.choices?.[0]?.message?.content || "";
-          if (text.trim().length > 30) {
-            ad = text.trim();
-            success = true;
-          }
+        if (response.status === 402) {
+          return jsonResponse({ error: "Payment Required" });
         }
+
+        if (!response.ok) {
+          const apiError = await parseApiError(response);
+          console.error("generate-ad upstream error:", response.status, apiError);
+          return jsonResponse({ error: apiError || `API error: ${response.status}` });
+        }
+
+        const data = await response.json();
+        const text = data.choices?.[0]?.message?.content;
+
+        if (typeof text === "string" && text.trim()) {
+          return jsonResponse({ ad: text.trim() });
+        }
+
+        lastError = "Empty AI response";
       } catch (e) {
-        console.error(`Attempt ${attempt + 1} failed:`, e);
+        clearTimeout(timeout);
+        if (e instanceof Error) {
+          lastError = e.name === "AbortError" ? "Network Error" : e.message || "Network Error";
+        } else {
+          lastError = "Network Error";
+        }
+        console.error(`generate-ad attempt ${attempt + 1} failed:`, e);
       }
     }
 
-    if (success) {
-      return new Response(JSON.stringify({ ad }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // API completely unreachable — signal fallback
-    return new Response(JSON.stringify({ ad: "", fallback: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: lastError });
   } catch (e) {
     console.error("generate-ad error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: e instanceof Error ? e.message : "Unknown error" });
   }
 });

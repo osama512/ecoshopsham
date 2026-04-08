@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Facebook, Copy, Check, Loader2, Link2, RefreshCw } from "lucide-react";
+import { Sparkles, Facebook, Copy, Check, Loader2, Link2, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -7,48 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-/* ── Generic Fallback Library (NO product-specific words) ── */
-const INTROS = [
-  "شوفوا شو وصل لعنا! 🔥",
-  "لعشاق التميز والفخامة.. 💎",
-  "تنبيه لكل الناس الشيك! ✨",
-  "أخيراً وصل اللي كلكن عم تسألوا عنو! 🚀",
-  "فرصة ما بتتكرر يا جماعة! 🎯",
-  "عنا شي جديد رح يعجبكن كتير! 💫",
-];
-
-const BODIES = [
-  "[name] بجودة عالية وسعر مدروس [price]. كل التفاصيل مدروسة بعناية والنوعية بتحكي عن حالها. مش بس شكل — كمان جودة بتحسها من أول استخدام. قطعة بتخلّي كل اللي حواليك يسألوك من وين جبتها.",
-  "[name] اللي الكل عم يحكي عنو [price]. خامة ممتازة وجودة ما إلها مثيل. كل قطعة مصنوعة بعناية وبتفاصيل دقيقة بتفرق عن أي شي تاني بالسوق. لأنك تستحق الأفضل.",
-  "شو رأيكن ب [name]؟ [price]، منتج مدروس من كل النواحي — الجودة، المتانة، والأناقة. مش رح تندم أبداً وبتضمنلك تجربة استثنائية.",
-  "[name] — القطعة اللي بتكمل حياتك وبتعطيك الراحة والتميز. [price] والنوعية بتحكي عن حالها. كل التفاصيل مدروسة لتضمنلك أفضل تجربة.",
-];
-
-const OUTROS = [
-  "اطلبوه هلق قبل ما تخلص الكمية! 📦\nراسلنا عالواتساب وبيوصلك لعند الباب 🚚",
-  "توصيل سريع وخدمة متميزة لكل المحافظات 🇸🇾\nاضغط عالرابط واطلب هلق!",
-  "لا تضيّع الفرصة — الكمية عم تخلص بسرعة! ⚡\nتواصل معنا عالواتساب لتطلب",
-  "اطلب هلق وخلّي أنت المميز! 😎\nالتوصيل متاح لكل سوريا",
-  "سارعوا — العرض لفترة محدودة! 🔥\nراسلنا عالواتساب واطلب فوراً",
-];
-
-function buildGenericFallback(productInfo: string): string {
-  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-  const lines = productInfo.split("\n").map(l => l.trim()).filter(Boolean);
-  const name = lines[0] || "المنتج";
-  const priceMatch = productInfo.match(/(\d[\d,\.]*)/);
-  const price = priceMatch
-    ? `بسعر ${priceMatch[1]} ليرة بس`
-    : "— تواصل معنا لمعرفة السعر 📩";
-
-  const intro = pick(INTROS);
-  const body = pick(BODIES).replace("[name]", name).replace("[price]", price);
-  const outro = pick(OUTROS);
-
-  return `${intro}\n\n${body}\n\n${outro}`;
-}
-
-/* ── Ad Angles for AI variety ── */
 const AD_ANGLES = [
   "ركّز على الجودة العالية والخامة الممتازة",
   "ركّز على السعر المناسب والعرض المميز",
@@ -58,19 +16,59 @@ const AD_ANGLES = [
   "ركّز على الاستخدام اليومي والعملية",
 ];
 
+const extractFunctionErrorMessage = async (error: unknown): Promise<string> => {
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context?: unknown }).context;
+
+    if (context instanceof Response) {
+      const payload = await context.clone().json().catch(() => null);
+
+      if (payload && typeof payload === "object" && "error" in payload) {
+        const message = (payload as { error?: unknown }).error;
+        if (typeof message === "string" && message.trim()) return message;
+      }
+
+      const text = await context.text().catch(() => "");
+      if (text.trim()) return text;
+    }
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+
+  if (typeof error === "string" && error.trim()) return error;
+
+  return "Unknown error";
+};
+
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
   const [generated, setGenerated] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const showGenerateError = (message: string) => {
+    setGenerated("");
+    setErrorMessage(message);
+    toast({
+      title: "فشل توليد الإعلان",
+      description: message,
+      variant: "destructive",
+    });
+  };
+
   const handleGenerate = async () => {
     if (!input.trim()) return;
+
     setLoading(true);
     setGenerated("");
+    setErrorMessage("");
 
     try {
       const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
@@ -80,27 +78,30 @@ const AIMarketerPage = () => {
       });
 
       if (error) {
-        console.error("Edge function error:", error);
-        setGenerated(buildGenericFallback(input.trim()));
+        const message = await extractFunctionErrorMessage(error);
+        console.error("Edge function error:", message, error);
+        showGenerateError(message);
         return;
       }
 
-      if (data?.error === "rate_limited") {
-        toast({ title: "يرجى الانتظار قليلاً ثم المحاولة مجدداً ⏳", variant: "destructive" });
-        setGenerated(buildGenericFallback(input.trim()));
+      if (data?.error && typeof data.error === "string") {
+        console.error("Generate ad backend error:", data.error);
+        showGenerateError(data.error);
         return;
       }
 
-      const adText = data?.ad;
-      if (adText && adText.trim().length > 30) {
-        setGenerated(adText.trim());
-      } else {
-        // API unreachable or empty response — use generic fallback
-        setGenerated(buildGenericFallback(input.trim()));
+      const adText = typeof data?.ad === "string" ? data.ad.trim() : "";
+
+      if (!adText) {
+        showGenerateError("Empty AI response");
+        return;
       }
+
+      setGenerated(adText);
     } catch (err) {
-      console.error("Generate ad error:", err);
-      setGenerated(buildGenericFallback(input.trim()));
+      const message = await extractFunctionErrorMessage(err);
+      console.error("Generate ad error:", message, err);
+      showGenerateError(message);
     } finally {
       setLoading(false);
     }
@@ -165,6 +166,16 @@ const AIMarketerPage = () => {
         <Card className="p-4 flex items-center justify-center gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm font-medium">الذكاء الاصطناعي عم يكتبلك إعلان نار... 🔥</span>
+        </Card>
+      )}
+
+      {errorMessage && !loading && (
+        <Card className="p-4 space-y-3 border-destructive/30 bg-destructive/5">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span className="font-semibold text-sm">رسالة الخطأ الحقيقية</span>
+          </div>
+          <p className="text-sm whitespace-pre-line leading-relaxed" dir="auto">{errorMessage}</p>
         </Card>
       )}
 
