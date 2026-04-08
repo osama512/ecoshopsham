@@ -6,21 +6,21 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are a high-end Syrian marketing expert. Write a Comprehensive, Long-form (200+ words) advertisement. Structure it into 4 detailed sections:
+const SYSTEM_PROMPT = `You are a professional Syrian copywriter. Write a punchy and precise social media ad. Target length: strictly around 100 words.
 
-1. The Hook: An emotional/engaging opening in Syrian dialect.
-2. The Story: A deep dive into the product's value and how it solves the customer's problem (2 long paragraphs).
-3. Detailed Specs: Use bullet points to elaborate on EVERY detail provided in the input.
-4. The Closing: A strong call to action with price and delivery info.
+Follow this exact format:
+- Hook: One catchy Syrian sentence.
+- Body: 2 short sentences describing the core value.
+- Specs: Maximum 3 short bullet points (only use the input provided).
+- Closing: Price and a fast Call to Action.
 
-قواعد صارمة:
-- اكتب بلهجة سورية طبيعية (شامية أو حلبية حسب السياق)
-- Be verbose, descriptive, and use rich Syrian vocabulary. Avoid short/lazy summaries.
-- استخدم إيموجي بشكل ذكي ومتنوع
-- لا تكتب عناوين الأقسام (لا تكتب "Hook:" أو "القصة:") — ادمجهم بشكل طبيعي
-- اكتب الإعلان جاهز للنشر مباشرة على فيسبوك أو إنستغرام
+قواعد:
+- اكتب بلهجة سورية طبيعية
+- استخدم إيموجي بشكل ذكي
+- لا تكتب عناوين الأقسام — ادمجهم بشكل طبيعي
+- لا تكتب فقرات طويلة أبداً
 - إذا ما كان السعر مذكور، اكتب "تواصل معنا لمعرفة السعر 📩"
-- لا تستخدم عبارة "يا أكابر أحلى العروض عنا" أبداً`;
+- الإعلان جاهز للنشر على فيسبوك أو إنستغرام`;
 
 const jsonResponse = (payload: Record<string, unknown>) =>
   new Response(JSON.stringify(payload), {
@@ -30,11 +30,7 @@ const jsonResponse = (payload: Record<string, unknown>) =>
 
 async function parseApiError(response: Response) {
   const raw = await response.text();
-
-  if (!raw.trim()) {
-    return `API error: ${response.status}`;
-  }
-
+  if (!raw.trim()) return `API error: ${response.status}`;
   try {
     const parsed = JSON.parse(raw);
     const message = parsed?.error?.message ?? parsed?.error ?? parsed?.message ?? parsed?.detail ?? raw;
@@ -53,13 +49,13 @@ async function callAI(prompt: string, apiKey: string, signal: AbortSignal) {
     },
     signal,
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.5-flash-lite",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },
       ],
-      temperature: 1.0,
-      max_tokens: 1024,
+      temperature: 0.9,
+      max_tokens: 400,
     }),
   });
 }
@@ -86,58 +82,40 @@ serve(async (req) => {
 معلومات المنتج:
 ${productDescription.trim()}
 
-تعليمات:
-- استخدم كل التفاصيل المذكورة أعلاه
-- إذا ما كان في سعر مذكور، اكتب "تواصل معنا لمعرفة السعر 📩"
-- اكتب إعلان طويل ومفصّل (200 كلمة على الأقل)
-- رقم عشوائي للتنويع: ${Date.now()}
+اكتب إعلان قصير ومباشر (100 كلمة تقريباً):`;
 
-اكتب الإعلان مباشرة:`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
-    let lastError = "Network Error";
+    try {
+      const response = await callAI(userPrompt, LOVABLE_API_KEY, controller.signal);
+      clearTimeout(timeout);
 
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000);
+      if (response.status === 429) return jsonResponse({ error: "Rate Limit Exceeded" });
+      if (response.status === 402) return jsonResponse({ error: "Payment Required" });
 
-      try {
-        const response = await callAI(userPrompt, LOVABLE_API_KEY, controller.signal);
-        clearTimeout(timeout);
-
-        if (response.status === 429) {
-          return jsonResponse({ error: "Rate Limit Exceeded" });
-        }
-
-        if (response.status === 402) {
-          return jsonResponse({ error: "Payment Required" });
-        }
-
-        if (!response.ok) {
-          const apiError = await parseApiError(response);
-          console.error("generate-ad upstream error:", response.status, apiError);
-          return jsonResponse({ error: apiError || `API error: ${response.status}` });
-        }
-
-        const data = await response.json();
-        const text = data.choices?.[0]?.message?.content;
-
-        if (typeof text === "string" && text.trim()) {
-          return jsonResponse({ ad: text.trim() });
-        }
-
-        lastError = "Empty AI response";
-      } catch (e) {
-        clearTimeout(timeout);
-        if (e instanceof Error) {
-          lastError = e.name === "AbortError" ? "Network Error" : e.message || "Network Error";
-        } else {
-          lastError = "Network Error";
-        }
-        console.error(`generate-ad attempt ${attempt + 1} failed:`, e);
+      if (!response.ok) {
+        const apiError = await parseApiError(response);
+        console.error("generate-ad upstream error:", response.status, apiError);
+        return jsonResponse({ error: apiError || `API error: ${response.status}` });
       }
-    }
 
-    return jsonResponse({ error: lastError });
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+
+      if (typeof text === "string" && text.trim()) {
+        return jsonResponse({ ad: text.trim() });
+      }
+
+      return jsonResponse({ error: "Empty AI response" });
+    } catch (e) {
+      clearTimeout(timeout);
+      const msg = e instanceof Error
+        ? (e.name === "AbortError" ? "Network Error" : e.message || "Network Error")
+        : "Network Error";
+      console.error("generate-ad failed:", e);
+      return jsonResponse({ error: msg });
+    }
   } catch (e) {
     console.error("generate-ad error:", e);
     return jsonResponse({ error: e instanceof Error ? e.message : "Unknown error" });
