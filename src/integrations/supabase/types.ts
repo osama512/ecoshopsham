@@ -124,6 +124,7 @@ export type Database = {
           role: string | null
           status: string | null
           store_name: string | null
+          store_slug: string | null
           updated_at: string | null
           whatsapp_number: string | null
         }
@@ -137,6 +138,7 @@ export type Database = {
           role?: string | null
           status?: string | null
           store_name?: string | null
+          store_slug?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
         }
@@ -150,6 +152,7 @@ export type Database = {
           role?: string | null
           status?: string | null
           store_name?: string | null
+          store_slug?: string | null
           updated_at?: string | null
           whatsapp_number?: string | null
         }
