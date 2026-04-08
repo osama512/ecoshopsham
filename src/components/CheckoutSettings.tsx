@@ -15,6 +15,12 @@ interface ShippingZone {
   price: number;
 }
 
+const METHOD_PLACEHOLDERS: Record<string, string> = {
+  syriatel_cash: "رقم الحساب أو الموبايل (مثال: 0997...)",
+  haram_transfer: "الاسم الثلاثي والرقم الوطني للمستلم",
+  cash: "ملاحظات إضافية للتوصيل (اختياري)",
+};
+
 interface PaymentMethodEntry {
   id: string;
   name: string;
@@ -170,19 +176,20 @@ const CheckoutSettings = () => {
         <div className="space-y-3">
           {paymentMethods.map((method) => (
             <div key={method.id} className="rounded-lg border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex justify-between items-center w-full">
+                <div className="flex items-center gap-3 min-w-0">
                   <Switch
                     checked={method.enabled}
                     onCheckedChange={() => toggleMethod(method.id)}
+                    className="shrink-0"
                   />
-                  <span className="text-sm font-medium">{method.name}</span>
+                  <span className="text-sm font-medium truncate">{method.name}</span>
                 </div>
                 {isCustomMethod(method.id) && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                     onClick={() => removeMethod(method.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -191,7 +198,7 @@ const CheckoutSettings = () => {
               </div>
               {method.enabled && (
                 <Input
-                  placeholder="تفاصيل الحساب (اختياري) — مثال: الرقم: 0988123456"
+                  placeholder={METHOD_PLACEHOLDERS[method.id] || "تفاصيل إضافية (اختياري)"}
                   value={method.details}
                   onChange={(e) => updateMethodDetails(method.id, e.target.value)}
                   className="text-sm"

@@ -1,5 +1,5 @@
 import { Outlet, useLocation, Link } from "react-router-dom";
-import { Package, ShoppingCart, Sparkles, Settings, LogOut, BarChart3, Megaphone, Link2, Check } from "lucide-react";
+import { Package, ShoppingCart, Sparkles, Settings, LogOut, BarChart3, Megaphone, Link2, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { NavLink } from "@/components/NavLink";
@@ -30,16 +30,29 @@ const navItems = [
 ];
 
 function CopyStoreLinkButton({ collapsed }: { collapsed: boolean }) {
-  const { user, storeSlug } = useAuth();
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const storePath = storeSlug || user?.id?.replace(/-/g, "").slice(0, 6) || "store";
-  const handleCopy = () => {
-    const link = `${window.location.origin}/s/${storePath}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success("تم نسخ الرابط بنجاح! 🔗");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data } = await (await import("@/integrations/supabase/client")).supabase
+        .from("profiles")
+        .select("store_slug")
+        .eq("id", user.id)
+        .maybeSingle();
+      const slug = (data as any)?.store_slug;
+      const storePath = slug || user.id.replace(/-/g, "").slice(0, 6);
+      const link = `${window.location.origin}/s/${storePath}`;
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success("تم نسخ الرابط بنجاح! 🔗");
+      setTimeout(() => setCopied(false), 2000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,7 +61,7 @@ function CopyStoreLinkButton({ collapsed }: { collapsed: boolean }) {
       size="sm"
       className="w-full gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold"
     >
-      {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
       {!collapsed && (copied ? "تم النسخ!" : "نسخ رابط المتجر")}
     </Button>
   );
