@@ -149,11 +149,16 @@ const AIMarketerPage = () => {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={"مثال: صابون حلبي طبيعي بزيت الزيتون\nالسعر: 15,000 ل.س\nمصنوع يدوياً من مواد طبيعية 100%"}
+          placeholder={"مثال: ساعة Curren أصلية، ماكينة يابانية، ضد المي، زجاج ضد الخدش، السعر 150 ألف..."}
           rows={5}
           className="resize-none"
           disabled={loading}
         />
+        {input.trim().length > 0 && input.trim().length < 30 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            💡 نصيحة: مشان يطلع الإعلان دسم وبيجيب زباين، اكتبلنا شوية تفاصيل زيادة (متل الماكينة، اللون، الميزات، والسعر...)
+          </p>
+        )}
         <Button
           onClick={handleGenerate}
           disabled={!input.trim() || loading}
