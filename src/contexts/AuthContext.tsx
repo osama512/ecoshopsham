@@ -62,6 +62,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setTrialDaysLeft(daysLeft);
   };
 
+  const resetProfileState = useCallback(() => {
+    setRole(null);
+    setMerchantStatus(null);
+    setPlanType(null);
+    setStoreSlug(null);
+    setTrialExpired(false);
+    setTrialDaysLeft(0);
+  }, []);
+
+  const syncAuthState = useCallback(
+    (nextSession: Session | null, preserveUserReference = false) => {
+      setSession((current) => {
+        if (
+          current?.access_token === nextSession?.access_token &&
+          current?.refresh_token === nextSession?.refresh_token &&
+          current?.user?.id === nextSession?.user?.id
+        ) {
+          return current;
+        }
+
+        return nextSession;
+      });
+
+      setUser((current) => {
+        const nextUser = nextSession?.user ?? null;
+
+        if (preserveUserReference && current?.id && current.id === nextUser?.id) {
+          return current;
+        }
+
+        return nextUser;
+      });
+    },
+    []
+  );
+
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
@@ -119,34 +155,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
+      (event, nextSession) => {
+        syncAuthState(nextSession, event === "TOKEN_REFRESHED");
+
+        if (nextSession?.user) {
+          if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+            setTimeout(() => fetchProfile(nextSession.user.id), 0);
+          }
         } else {
-          setRole(null);
-          setMerchantStatus(null);
-          setPlanType(null);
-          setStoreSlug(null);
-          setTrialExpired(false);
-          setTrialDaysLeft(0);
+          resetProfileState();
         }
+
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      syncAuthState(currentSession);
+
+      if (currentSession?.user) {
+        fetchProfile(currentSession.user.id);
+      } else {
+        resetProfileState();
       }
+
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [fetchProfile, resetProfileState, syncAuthState]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
