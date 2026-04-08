@@ -5,9 +5,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-const GEMINI_API_KEY = "AIzaSyC8JBguVdq5keMPhNBB1aRBpAmeiTHVr0M";
+/* ── Modular Fallback Library (Lego-style) ── */
+const INTROS = [
+  "يا أكابر، شوفوا شو وصل لعنا! 🔥",
+  "لعشاق التميز والفخامة.. 💎",
+  "تنبيه لكل الناس الشيك! ✨",
+  "أخيراً وصل اللي كلكن عم تسألوا عنو! 🚀",
+  "فرصة ما بتتكرر يا جماعة! 🎯",
+  "عنا شي جديد رح يعجبكن كتير! 💫",
+];
 
+const BODIES = [
+  "[product_name] صار متوفر عنا وبسعر [price] ليرة بس! الجودة نخب أول والكمية محدودة.",
+  "[product_name] اللي الكل عم يحكي عنو، هلق بين إيديكن بسعر [price] ليرة. خامة بتجنن وجودة ما إلها مثيل.",
+  "شو رأيكن ب [product_name]؟ سعر مدروس [price] ليرة، وجودة بتخلّيك ترجع تطلب كمان مرة.",
+  "[product_name] — القطعة اللي بتكمل طلتك وبتعطيك الهيبة. السعر [price] ليرة والنوعية بتحكي عن حالها.",
+  "وصل [product_name] بأفضل سعر بالسوق: [price] ليرة. مصنوع بعناية وجودة ما بتلاقيها بأي مكان تاني.",
+];
+
+const OUTROS = [
+  "اطلبوه هلق قبل ما تخلص الكمية! 📦\nراسلنا عالواتساب وبيوصلك لعند الباب 🚚",
+  "توصيل سريع وخدمة متميزة لكل المحافظات 🇸🇾\nاضغط عالرابط واطلب هلق!",
+  "لا تضيّع الفرصة — الكمية عم تخلص بسرعة! ⚡\nتواصل معنا عالواتساب لتطلب",
+  "اطلب هلق وخلّي أنت المميز بين رفقاتك! 😎\nالتوصيل متاح لكل سوريا",
+  "سارعوا قبل نفاد الكمية — العرض لفترة محدودة! 🔥\nراسلنا عالواتساب واطلب فوراً",
+];
+
+function buildModularAd(productInfo: string): string {
+  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+  const lines = productInfo.split("\n").map(l => l.trim()).filter(Boolean);
+  const productName = lines[0] || "المنتج";
+  const priceMatch = productInfo.match(/(\d[\d,\.]*)/);
+  const price = priceMatch ? priceMatch[1] : "---";
+
+  const intro = pick(INTROS);
+  const body = pick(BODIES).replace("[product_name]", productName).replace("[price]", price);
+  const outro = pick(OUTROS);
+
+  return `${intro}\n\n${body}\n\n${outro}`;
+}
+
+/* ── Ad Angles for AI variety ── */
 const AD_ANGLES = [
   "ركّز على الجودة العالية والخامة الممتازة للمنتج",
   "ركّز على السعر المناسب والعرض اللي ما بيتعوض",
@@ -16,48 +56,6 @@ const AD_ANGLES = [
   "ركّز على الهدية المثالية والمناسبات",
   "ركّز على الاستخدام اليومي وكيف رح يسهّل حياة الزبون",
 ];
-
-const FALLBACK_TEMPLATES = [
-  "يا أكابر، [اسم_المنتج] صار متوفر عنا وبسعر لقطة [السعر] ليرة بس! الجودة نخب أول والقطع عم تخلص بسرعة. لا تضيعوا الفرصة واطلبوا هلق بضغطة زر! 🔥🇸🇾",
-  "الفخامة بتفاصيلها.. [اسم_المنتج] قطعة بتكمل طلتك وبتعطيك الهيبة اللي بتستحقها. السعر [السعر] ليرة والجودة بتضمنلك التميز. اطلبها هلق لتوصلك لعند الباب! ✨⌚",
-  "تنبيه لعشاق الأناقة! [اسم_المنتج] وصل لعنا بكمية محدودة جداً. السعر [السعر] ليرة والتوصيل متاح. اطلب هلق قبل ما تخلص الكمية ونقولك راحت عليك! 🚀📦",
-  "بدك هدية بتبيض الوجة؟ [اسم_المنتج] هو الخيار المثالي. فخامة، جودة، وسعر مدروس [السعر] ليرة. جهز حالك لتفاجئ اللي بتحبهم واطلبها هلق! 🎁❤️",
-];
-
-const pickFallback = (productInfo: string): string => {
-  const template = FALLBACK_TEMPLATES[Math.floor(Math.random() * FALLBACK_TEMPLATES.length)];
-  // Try to extract name and price from user input
-  const lines = productInfo.split("\n").map(l => l.trim()).filter(Boolean);
-  const productName = lines[0] || "المنتج";
-  const priceMatch = productInfo.match(/(\d[\d,\.]*)/);
-  const price = priceMatch ? priceMatch[1] : "---";
-  return template.replace("[اسم_المنتج]", productName).replace("[السعر]", price);
-};
-
-const buildPrompt = (productInfo: string) => {
-  const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
-  const timestamp = Date.now();
-
-  return `أنت مسوّق سوري محترف على السوشال ميديا. مطلوب منك تكتب إعلان فريد وجذاب لفيسبوك وإنستغرام.
-
-قواعد صارمة:
-- استخدم لهجة سورية طبيعية (شامية أو حلبية حسب السياق)
-- لا تستخدم أبداً عبارة "يا أكابر أحلى العروض عنا" أو أي قالب جاهز مكرر
-- كل إعلان لازم يكون مختلف تماماً عن اللي قبله
-- استخدم إيموجي بشكل ذكي (مش كتير)
-- اكتب بأسلوب يخلّي الزبون يحس إنو لازم يطلب هلق
-- خلّي الإعلان جاهز للنشر مباشرة مع فواصل أسطر واضحة
-- أضف دعوة لاتخاذ إجراء (اطلب عالواتساب أو راسلنا)
-
-الزاوية التسويقية لهالإعلان: ${angle}
-
-معلومات المنتج:
-${productInfo}
-
-رقم عشوائي للتنويع: ${timestamp}
-
-اكتب الإعلان مباشرة بدون أي مقدمة أو شرح:`;
-};
 
 const AIMarketerPage = () => {
   const [input, setInput] = useState("");
@@ -74,42 +72,30 @@ const AIMarketerPage = () => {
     setGenerated("");
 
     const useFallback = () => {
-      setGenerated(pickFallback(input.trim()));
+      setGenerated(buildModularAd(input.trim()));
     };
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
+      const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-      const body = {
-        contents: [{
-          parts: [{ text: buildPrompt(input.trim()) }]
-        }],
-        generationConfig: {
-          temperature: 1.2,
-          topP: 0.95,
-          topK: 40,
-        }
-      };
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
+      const { data, error } = await supabase.functions.invoke("generate-ad", {
+        body: { productDescription: input.trim(), angle },
       });
-      clearTimeout(timeout);
 
-      if (!res.ok) {
-        console.error("Gemini API error:", res.status);
+      if (error) {
+        console.error("Edge function error:", error);
         useFallback();
         return;
       }
 
-      const data = await res.json();
-      const adText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (adText && adText.trim().length > 0) {
+      if (data?.error === "rate_limited") {
+        toast({ title: "يرجى الانتظار قليلاً ثم المحاولة مجدداً ⏳", variant: "destructive" });
+        useFallback();
+        return;
+      }
+
+      const adText = data?.ad;
+      if (adText && adText.trim().length > 10) {
         setGenerated(adText.trim());
       } else {
         useFallback();
