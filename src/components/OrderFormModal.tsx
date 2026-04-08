@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, MessageCircle, Tag, CheckCircle2, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
-import { formatSyrianWhatsApp, isValidSyrianPhone } from "@/lib/phone";
+import { formatSyrianWhatsApp, isValidPhone } from "@/lib/phone";
 
 interface ShippingZone {
   id: string;
@@ -144,7 +144,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
     setAppliedCoupon({ code: data.code, discount_percent: data.discount_percent });
   };
 
-  const phoneValid = isValidSyrianPhone(phone);
+  const phoneValid = isValidPhone(phone);
 
   const handleSubmit = async () => {
     if (!fullName.trim() || !city || !address.trim() || !phone.trim() || !phoneValid) return;
@@ -249,9 +249,9 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
           <div className="space-y-1.5">
             <Label htmlFor="phone">رقم الهاتف *</Label>
-            <Input id="phone" placeholder="09XXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={13} />
+            <Input id="phone" placeholder="09XXXXXXXX أو +1234567890" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={16} />
             {phone.trim() && !phoneValid && (
-              <p className="text-xs text-destructive">أدخل رقماً سورياً صحيحاً (مثال: 0932052427)</p>
+              <p className="text-xs text-destructive">أدخل رقم هاتف صحيح (مثال: 0932052427 أو +1234567890)</p>
             )}
           </div>
 
