@@ -18,11 +18,11 @@ const INTROS = [
 ];
 
 const BODIES = [
-  "[product_name] صار متوفر عنا وبسعر [price] ليرة بس! الجودة نخب أول والكمية محدودة.",
-  "[product_name] اللي الكل عم يحكي عنو، هلق بين إيديكن بسعر [price] ليرة. خامة بتجنن وجودة ما إلها مثيل.",
-  "شو رأيكن ب [product_name]؟ سعر مدروس [price] ليرة، وجودة بتخلّيك ترجع تطلب كمان مرة.",
-  "[product_name] — القطعة اللي بتكمل طلتك وبتعطيك الهيبة. السعر [price] ليرة والنوعية بتحكي عن حالها.",
-  "وصل [product_name] بأفضل سعر بالسوق: [price] ليرة. مصنوع بعناية وجودة ما بتلاقيها بأي مكان تاني.",
+  "[product_name] صار متوفر عنا [price_line]! الجودة نخب أول والكمية محدودة. قطعة بتلفت الأنظار وبتخلّي كل اللي حواليك يسألوك من وين جبتها. الخامة ممتازة والتصميم عصري بيناسب كل الأذواق. مش بس شكل — كمان جودة بتحسها من أول لمسة.",
+  "[product_name] اللي الكل عم يحكي عنو، هلق بين إيديكن [price_line]. خامة بتجنن وجودة ما إلها مثيل. كل قطعة مصنوعة بعناية وبتفاصيل دقيقة بتفرق عن أي شي تاني بالسوق. لأنك تستحق الأفضل.",
+  "شو رأيكن ب [product_name]؟ [price_line]، وجودة بتخلّيك ترجع تطلب كمان مرة. منتج مدروس من كل النواحي — التصميم، المتانة، والأناقة. مش رح تندم أبداً.",
+  "[product_name] — القطعة اللي بتكمل طلتك وبتعطيك الهيبة. [price_line] والنوعية بتحكي عن حالها. كل التفاصيل مدروسة لتضمنلك تجربة استثنائية.",
+  "وصل [product_name] بأفضل عرض بالسوق! [price_line]. مصنوع بعناية وجودة ما بتلاقيها بأي مكان تاني. القطعة اللي كنت عم تدور عليها صارت بين إيديك.",
 ];
 
 const OUTROS = [
@@ -38,10 +38,12 @@ function buildModularAd(productInfo: string): string {
   const lines = productInfo.split("\n").map(l => l.trim()).filter(Boolean);
   const productName = lines[0] || "المنتج";
   const priceMatch = productInfo.match(/(\d[\d,\.]*)/);
-  const price = priceMatch ? priceMatch[1] : "---";
+  const priceLine = priceMatch
+    ? `بسعر ${priceMatch[1]} ليرة بس`
+    : "— تواصل معنا لمعرفة السعر 📩";
 
   const intro = pick(INTROS);
-  const body = pick(BODIES).replace("[product_name]", productName).replace("[price]", price);
+  const body = pick(BODIES).replace("[product_name]", productName).replace("[price_line]", priceLine);
   const outro = pick(OUTROS);
 
   return `${intro}\n\n${body}\n\n${outro}`;
