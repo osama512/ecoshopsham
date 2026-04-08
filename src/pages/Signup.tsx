@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus } from "lucide-react";
-import { isValidSyrianPhone, formatSyrianWhatsApp } from "@/lib/phone";
+import { isValidPhone, formatSyrianWhatsApp } from "@/lib/phone";
 
 const Signup = () => {
   const [tab, setTab] = useState<"phone" | "email">("phone");
@@ -23,8 +23,8 @@ const Signup = () => {
     setLoading(true);
 
     if (tab === "phone") {
-      if (!isValidSyrianPhone(phone)) {
-        toast({ title: "رقم الهاتف غير صالح", description: "مثال: 0912345678", variant: "destructive" });
+      if (!isValidPhone(phone)) {
+        toast({ title: "رقم الهاتف غير صالح", description: "مثال: 0912345678 أو +1234567890", variant: "destructive" });
         setLoading(false);
         return;
       }
@@ -95,7 +95,7 @@ const Signup = () => {
                 <Input
                   type="tel"
                   dir="ltr"
-                  placeholder="09xxxxxxxx"
+                  placeholder="09xxxxxxxx أو +1234567890"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="text-left h-11"
