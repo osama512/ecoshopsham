@@ -7,9 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-/* ── Modular Fallback Library (Lego-style) ── */
+/* ── Generic Fallback Library (NO product-specific words) ── */
 const INTROS = [
-  "يا أكابر، شوفوا شو وصل لعنا! 🔥",
+  "شوفوا شو وصل لعنا! 🔥",
   "لعشاق التميز والفخامة.. 💎",
   "تنبيه لكل الناس الشيك! ✨",
   "أخيراً وصل اللي كلكن عم تسألوا عنو! 🚀",
@@ -18,32 +18,31 @@ const INTROS = [
 ];
 
 const BODIES = [
-  "[product_name] صار متوفر عنا [price_line]! الجودة نخب أول والكمية محدودة. قطعة بتلفت الأنظار وبتخلّي كل اللي حواليك يسألوك من وين جبتها. الخامة ممتازة والتصميم عصري بيناسب كل الأذواق. مش بس شكل — كمان جودة بتحسها من أول لمسة.",
-  "[product_name] اللي الكل عم يحكي عنو، هلق بين إيديكن [price_line]. خامة بتجنن وجودة ما إلها مثيل. كل قطعة مصنوعة بعناية وبتفاصيل دقيقة بتفرق عن أي شي تاني بالسوق. لأنك تستحق الأفضل.",
-  "شو رأيكن ب [product_name]؟ [price_line]، وجودة بتخلّيك ترجع تطلب كمان مرة. منتج مدروس من كل النواحي — التصميم، المتانة، والأناقة. مش رح تندم أبداً.",
-  "[product_name] — القطعة اللي بتكمل طلتك وبتعطيك الهيبة. [price_line] والنوعية بتحكي عن حالها. كل التفاصيل مدروسة لتضمنلك تجربة استثنائية.",
-  "وصل [product_name] بأفضل عرض بالسوق! [price_line]. مصنوع بعناية وجودة ما بتلاقيها بأي مكان تاني. القطعة اللي كنت عم تدور عليها صارت بين إيديك.",
+  "[name] بجودة عالية وسعر مدروس [price]. كل التفاصيل مدروسة بعناية والنوعية بتحكي عن حالها. مش بس شكل — كمان جودة بتحسها من أول استخدام. قطعة بتخلّي كل اللي حواليك يسألوك من وين جبتها.",
+  "[name] اللي الكل عم يحكي عنو [price]. خامة ممتازة وجودة ما إلها مثيل. كل قطعة مصنوعة بعناية وبتفاصيل دقيقة بتفرق عن أي شي تاني بالسوق. لأنك تستحق الأفضل.",
+  "شو رأيكن ب [name]؟ [price]، منتج مدروس من كل النواحي — الجودة، المتانة، والأناقة. مش رح تندم أبداً وبتضمنلك تجربة استثنائية.",
+  "[name] — القطعة اللي بتكمل حياتك وبتعطيك الراحة والتميز. [price] والنوعية بتحكي عن حالها. كل التفاصيل مدروسة لتضمنلك أفضل تجربة.",
 ];
 
 const OUTROS = [
   "اطلبوه هلق قبل ما تخلص الكمية! 📦\nراسلنا عالواتساب وبيوصلك لعند الباب 🚚",
   "توصيل سريع وخدمة متميزة لكل المحافظات 🇸🇾\nاضغط عالرابط واطلب هلق!",
   "لا تضيّع الفرصة — الكمية عم تخلص بسرعة! ⚡\nتواصل معنا عالواتساب لتطلب",
-  "اطلب هلق وخلّي أنت المميز بين رفقاتك! 😎\nالتوصيل متاح لكل سوريا",
-  "سارعوا قبل نفاد الكمية — العرض لفترة محدودة! 🔥\nراسلنا عالواتساب واطلب فوراً",
+  "اطلب هلق وخلّي أنت المميز! 😎\nالتوصيل متاح لكل سوريا",
+  "سارعوا — العرض لفترة محدودة! 🔥\nراسلنا عالواتساب واطلب فوراً",
 ];
 
-function buildModularAd(productInfo: string): string {
+function buildGenericFallback(productInfo: string): string {
   const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
   const lines = productInfo.split("\n").map(l => l.trim()).filter(Boolean);
-  const productName = lines[0] || "المنتج";
+  const name = lines[0] || "المنتج";
   const priceMatch = productInfo.match(/(\d[\d,\.]*)/);
-  const priceLine = priceMatch
+  const price = priceMatch
     ? `بسعر ${priceMatch[1]} ليرة بس`
     : "— تواصل معنا لمعرفة السعر 📩";
 
   const intro = pick(INTROS);
-  const body = pick(BODIES).replace("[product_name]", productName).replace("[price_line]", priceLine);
+  const body = pick(BODIES).replace("[name]", name).replace("[price]", price);
   const outro = pick(OUTROS);
 
   return `${intro}\n\n${body}\n\n${outro}`;
@@ -51,12 +50,12 @@ function buildModularAd(productInfo: string): string {
 
 /* ── Ad Angles for AI variety ── */
 const AD_ANGLES = [
-  "ركّز على الجودة العالية والخامة الممتازة للمنتج",
-  "ركّز على السعر المناسب والعرض اللي ما بيتعوض",
-  "ركّز على الإحساس والتجربة اللي رح يعيشها الزبون",
-  "ركّز على التميّز وإن المنتج مش موجود بكل مكان",
-  "ركّز على الهدية المثالية والمناسبات",
-  "ركّز على الاستخدام اليومي وكيف رح يسهّل حياة الزبون",
+  "ركّز على الجودة العالية والخامة الممتازة",
+  "ركّز على السعر المناسب والعرض المميز",
+  "ركّز على الإحساس والتجربة العاطفية",
+  "ركّز على التميّز والحصرية",
+  "ركّز على الهدية المثالية",
+  "ركّز على الاستخدام اليومي والعملية",
 ];
 
 const AIMarketerPage = () => {
@@ -73,10 +72,6 @@ const AIMarketerPage = () => {
     setLoading(true);
     setGenerated("");
 
-    const useFallback = () => {
-      setGenerated(buildModularAd(input.trim()));
-    };
-
     try {
       const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
 
@@ -86,25 +81,26 @@ const AIMarketerPage = () => {
 
       if (error) {
         console.error("Edge function error:", error);
-        useFallback();
+        setGenerated(buildGenericFallback(input.trim()));
         return;
       }
 
       if (data?.error === "rate_limited") {
         toast({ title: "يرجى الانتظار قليلاً ثم المحاولة مجدداً ⏳", variant: "destructive" });
-        useFallback();
+        setGenerated(buildGenericFallback(input.trim()));
         return;
       }
 
       const adText = data?.ad;
-      if (adText && adText.trim().length > 10) {
+      if (adText && adText.trim().length > 30) {
         setGenerated(adText.trim());
       } else {
-        useFallback();
+        // API unreachable or empty response — use generic fallback
+        setGenerated(buildGenericFallback(input.trim()));
       }
     } catch (err) {
       console.error("Generate ad error:", err);
-      useFallback();
+      setGenerated(buildGenericFallback(input.trim()));
     } finally {
       setLoading(false);
     }
