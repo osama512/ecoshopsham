@@ -25,7 +25,14 @@ import Storefront from "./pages/Storefront";
 import ProductDetails from "./pages/ProductDetails";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 /** Redirect authenticated users based on role */
 const RoleRedirect = () => {
