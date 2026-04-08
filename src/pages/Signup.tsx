@@ -30,9 +30,8 @@ const Signup = () => {
       }
     }
 
-    // Supabase requires email — generate unique placeholder for phone-only signups
-    const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const signupEmail = tab === "email" ? email : `${formatSyrianWhatsApp(phone)}_${uniqueId}@phone.syriabiz.local`;
+    // Supabase requires email — deterministic placeholder for phone-only signups
+    const signupEmail = tab === "email" ? email : `${formatSyrianWhatsApp(phone)}@syriabiz.local`;
 
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
