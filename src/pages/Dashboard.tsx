@@ -30,11 +30,12 @@ const navItems = [
 ];
 
 function CopyStoreLinkButton({ collapsed }: { collapsed: boolean }) {
-  const { user } = useAuth();
+  const { user, storeSlug } = useAuth();
   const [copied, setCopied] = useState(false);
 
+  const storePath = storeSlug || user?.id?.replace(/-/g, "").slice(0, 6) || "store";
   const handleCopy = () => {
-    const link = `${window.location.origin}/s/${user?.id || "store"}`;
+    const link = `${window.location.origin}/s/${storePath}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success("تم نسخ الرابط بنجاح! 🔗");

@@ -9,6 +9,7 @@ interface AuthContextType {
   role: string | null;
   merchantStatus: string | null;
   planType: string | null;
+  storeSlug: string | null;
   trialExpired: boolean;
   trialDaysLeft: number;
   signOut: () => Promise<void>;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   merchantStatus: null,
   planType: null,
+  storeSlug: null,
   trialExpired: false,
   trialDaysLeft: 0,
   signOut: async () => {},
@@ -47,11 +49,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [planType, setPlanType] = useState<string | null>(null);
   const [trialExpired, setTrialExpired] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
 
   const applyFallbackProfileState = (daysLeft: number) => {
     setRole("merchant");
     setMerchantStatus("active");
     setPlanType("free");
+    setStoreSlug(null);
     setTrialExpired(false);
     setTrialDaysLeft(daysLeft);
   };
@@ -73,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setRole(d.role ?? "merchant");
       setMerchantStatus(d.status ?? "active");
       setPlanType(d.plan_type ?? "free");
+      setStoreSlug(d.store_slug ?? null);
       setTrialExpired(isTrialExpired(d.created_at, d.plan_type));
       if (d.created_at) {
         const diff = TRIAL_DAYS - (Date.now() - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24);
@@ -116,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(null);
           setMerchantStatus(null);
           setPlanType(null);
+          setStoreSlug(null);
           setTrialExpired(false);
           setTrialDaysLeft(0);
         }
@@ -140,7 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, trialExpired, trialDaysLeft, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, storeSlug, trialExpired, trialDaysLeft, signOut }}>
       {children}
     </AuthContext.Provider>
   );

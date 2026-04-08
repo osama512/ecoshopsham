@@ -28,10 +28,42 @@ const Storefront = () => {
     const fetchStore = async () => {
       setLoading(true);
 
+      // Try to resolve storeId: could be a slug, short ID, or UUID
+      let merchantId = storeId!;
+      
+      // If it doesn't look like a UUID, try slug lookup first
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId!);
+      
+      if (!isUUID) {
+        // Try slug lookup
+        const { data: slugProfile } = await supabase
+          .from("profiles" as any)
+          .select("id")
+          .eq("store_slug", storeId!)
+          .maybeSingle();
+        
+        if (slugProfile) {
+          merchantId = (slugProfile as any).id;
+        } else {
+          // Try short ID match (first 6 chars of UUID without dashes)
+          const { data: allProfiles } = await supabase
+            .from("profiles" as any)
+            .select("id")
+            .limit(500);
+          
+          if (allProfiles) {
+            const match = (allProfiles as any[]).find(
+              (p: any) => p.id.replace(/-/g, "").slice(0, 6) === storeId
+            );
+            if (match) merchantId = match.id;
+          }
+        }
+      }
+
       const { data: profile } = await supabase
         .from("profiles" as any)
         .select("*")
-        .eq("id", storeId!)
+        .eq("id", merchantId)
         .single();
 
       if (profile) {
@@ -59,7 +91,7 @@ const Storefront = () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("merchant_id", storeId!)
+        .eq("merchant_id", merchantId)
         .eq("is_visible", true)
         .order("created_at", { ascending: false });
 
