@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,6 +13,7 @@ interface AuthContextType {
   trialExpired: boolean;
   trialDaysLeft: number;
   signOut: () => Promise<void>;
+  refetchProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   trialExpired: false,
   trialDaysLeft: 0,
   signOut: async () => {},
+  refetchProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -60,10 +62,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setTrialDaysLeft(daysLeft);
   };
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("role, status, plan_type, created_at")
+      .select("role, status, plan_type, created_at, store_slug")
       .eq("id", userId)
       .maybeSingle();
 
@@ -88,7 +90,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Get the user's email from auth to sync to profile
     const { data: { user: authUser } } = await supabase.auth.getUser();
     const { error: upsertError } = await (supabase.from("profiles" as any) as any).upsert(
       {
@@ -108,7 +109,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     applyFallbackProfileState(TRIAL_DAYS);
-  };
+  }, []);
+
+  const refetchProfile = useCallback(async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  }, [user, fetchProfile]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -139,14 +146,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, storeSlug, trialExpired, trialDaysLeft, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, merchantStatus, planType, storeSlug, trialExpired, trialDaysLeft, signOut, refetchProfile }}>
       {children}
     </AuthContext.Provider>
   );

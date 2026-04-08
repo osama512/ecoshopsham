@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,37 +15,33 @@ interface ShippingZone {
   price: number;
 }
 
-interface PaymentMethodConfig {
-  cash: boolean;
-  syriatel_cash: boolean;
-  haram_transfer: boolean;
+interface PaymentMethodEntry {
+  id: string;
+  name: string;
+  details: string;
+  enabled: boolean;
 }
 
-const DEFAULT_PAYMENTS: PaymentMethodConfig = {
-  cash: true,
-  syriatel_cash: false,
-  haram_transfer: false,
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "الدفع عند الاستلام",
-  syriatel_cash: "سيريتل كاش",
-  haram_transfer: "حوالة الهرم",
-};
+const DEFAULT_METHODS: PaymentMethodEntry[] = [
+  { id: "syriatel_cash", name: "سيريتل كاش / MTN كاش", details: "", enabled: false },
+  { id: "haram_transfer", name: "شركة الهرم / الفؤاد", details: "", enabled: false },
+  { id: "cash", name: "دفع عند الاستلام", details: "", enabled: true },
+];
 
 const CheckoutSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [payments, setPayments] = useState<PaymentMethodConfig>(DEFAULT_PAYMENTS);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodEntry[]>(DEFAULT_METHODS);
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
   const [newZoneName, setNewZoneName] = useState("");
   const [newZonePrice, setNewZonePrice] = useState("");
+  const [newMethodName, setNewMethodName] = useState("");
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
+    const fetchSettings = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("store_settings" as any)
@@ -55,13 +51,61 @@ const CheckoutSettings = () => {
 
       if (!error && data) {
         const d = data as any;
-        if (d.payment_methods) setPayments(d.payment_methods);
         if (d.shipping_zones) setShippingZones(d.shipping_zones);
+
+        // Load payment methods from payment_methods JSON or legacy payment_methods config
+        const pm = d.payment_methods;
+        if (Array.isArray(pm)) {
+          // New format: array of PaymentMethodEntry
+          const merged = DEFAULT_METHODS.map((dm) => {
+            const saved = pm.find((p: PaymentMethodEntry) => p.id === dm.id);
+            return saved ? { ...dm, ...saved } : dm;
+          });
+          const custom = pm.filter(
+            (p: PaymentMethodEntry) => !DEFAULT_METHODS.some((dm) => dm.id === p.id)
+          );
+          setPaymentMethods([...merged, ...custom]);
+        } else if (pm && typeof pm === "object") {
+          // Legacy format: { cash: true, syriatel_cash: false, ... }
+          setPaymentMethods(
+            DEFAULT_METHODS.map((m) => ({
+              ...m,
+              enabled: pm[m.id] ?? m.enabled,
+            }))
+          );
+        }
       }
       setLoading(false);
     };
-    fetch();
+    fetchSettings();
   }, [user]);
+
+  const toggleMethod = (id: string) => {
+    setPaymentMethods((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m))
+    );
+  };
+
+  const updateMethodDetails = (id: string, details: string) => {
+    setPaymentMethods((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, details } : m))
+    );
+  };
+
+  const addCustomMethod = () => {
+    if (!newMethodName.trim()) return;
+    setPaymentMethods((prev) => [
+      ...prev,
+      { id: `custom_${Date.now()}`, name: newMethodName.trim(), details: "", enabled: true },
+    ]);
+    setNewMethodName("");
+  };
+
+  const removeMethod = (id: string) => {
+    setPaymentMethods((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const isCustomMethod = (id: string) => !DEFAULT_METHODS.some((dm) => dm.id === id);
 
   const handleAddZone = () => {
     if (!newZoneName.trim() || !newZonePrice.trim()) return;
@@ -79,7 +123,7 @@ const CheckoutSettings = () => {
 
   const handleSave = async () => {
     if (!user) return;
-    const atLeastOne = Object.values(payments).some(Boolean);
+    const atLeastOne = paymentMethods.some((m) => m.enabled);
     if (!atLeastOne) {
       toast({ title: "يجب تفعيل طريقة دفع واحدة على الأقل", variant: "destructive" });
       return;
@@ -89,7 +133,7 @@ const CheckoutSettings = () => {
     const { error } = await (supabase.from("store_settings") as any).upsert(
       {
         merchant_id: user.id,
-        payment_methods: payments,
+        payment_methods: paymentMethods,
         shipping_zones: shippingZones,
         updated_at: new Date().toISOString(),
       } as any,
@@ -119,25 +163,56 @@ const CheckoutSettings = () => {
         <p className="text-sm text-muted-foreground">خصّص طرق الدفع ومناطق الشحن لمتجرك</p>
       </div>
 
-      {/* Payment Methods */}
+      {/* Payment Methods with Switch toggles */}
       <Card className="p-5 space-y-4">
         <h3 className="font-semibold">طرق الدفع</h3>
-        <p className="text-xs text-muted-foreground">اختر طرق الدفع التي تقبلها. سيراها الزبائن عند الطلب.</p>
+        <p className="text-xs text-muted-foreground">فعّل طرق الدفع وأضف تفاصيل الحساب لكل طريقة. ستظهر للزبائن عند الطلب.</p>
         <div className="space-y-3">
-          {(Object.keys(PAYMENT_LABELS) as Array<keyof PaymentMethodConfig>).map((key) => (
-            <div key={key} className="flex items-center gap-3 rounded-lg border p-3">
-              <Checkbox
-                id={`pay-${key}`}
-                checked={payments[key]}
-                onCheckedChange={(checked) =>
-                  setPayments((prev) => ({ ...prev, [key]: !!checked }))
-                }
-              />
-              <Label htmlFor={`pay-${key}`} className="cursor-pointer flex-1 text-sm font-medium">
-                {PAYMENT_LABELS[key]}
-              </Label>
+          {paymentMethods.map((method) => (
+            <div key={method.id} className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={method.enabled}
+                    onCheckedChange={() => toggleMethod(method.id)}
+                  />
+                  <span className="text-sm font-medium">{method.name}</span>
+                </div>
+                {isCustomMethod(method.id) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => removeMethod(method.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              {method.enabled && (
+                <Input
+                  placeholder="تفاصيل الحساب (اختياري) — مثال: الرقم: 0988123456"
+                  value={method.details}
+                  onChange={(e) => updateMethodDetails(method.id, e.target.value)}
+                  className="text-sm"
+                />
+              )}
             </div>
           ))}
+        </div>
+
+        {/* Add custom method */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="اسم طريقة دفع أخرى..."
+            value={newMethodName}
+            onChange={(e) => setNewMethodName(e.target.value)}
+            className="text-sm"
+          />
+          <Button variant="outline" size="sm" onClick={addCustomMethod} disabled={!newMethodName.trim()} className="gap-1 shrink-0">
+            <Plus className="h-3.5 w-3.5" />
+            إضافة
+          </Button>
         </div>
       </Card>
 
@@ -170,20 +245,11 @@ const CheckoutSettings = () => {
         <div className="flex gap-2 items-end">
           <div className="flex-1 space-y-1">
             <Label className="text-xs">اسم المنطقة</Label>
-            <Input
-              placeholder="مثال: توصيل داخل دمشق"
-              value={newZoneName}
-              onChange={(e) => setNewZoneName(e.target.value)}
-            />
+            <Input placeholder="مثال: توصيل داخل دمشق" value={newZoneName} onChange={(e) => setNewZoneName(e.target.value)} />
           </div>
           <div className="w-28 space-y-1">
             <Label className="text-xs">السعر (ل.س)</Label>
-            <Input
-              type="number"
-              placeholder="15000"
-              value={newZonePrice}
-              onChange={(e) => setNewZonePrice(e.target.value)}
-            />
+            <Input type="number" placeholder="15000" value={newZonePrice} onChange={(e) => setNewZonePrice(e.target.value)} />
           </div>
           <Button variant="outline" size="icon" className="shrink-0" onClick={handleAddZone}>
             <Plus className="h-4 w-4" />
