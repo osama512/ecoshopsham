@@ -13,11 +13,12 @@ import { Loader2, Save, Link2, Check, Crown, Sparkles } from "lucide-react";
 import CheckoutSettings from "@/components/CheckoutSettings";
 
 const DashboardSettings = () => {
-  const { user } = useAuth();
+  const { user, storeSlug: contextSlug } = useAuth();
   const { toast } = useToast();
   const [storeName, setStoreName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [paymentInstructions, setPaymentInstructions] = useState("");
+  const [storeSlug, setStoreSlug] = useState("");
   const [planType, setPlanType] = useState("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,6 +38,7 @@ const DashboardSettings = () => {
         setStoreName((data as any).store_name || "");
         setWhatsapp((data as any).whatsapp_number || "");
         setPlanType((data as any).plan_type || "free");
+        setStoreSlug((data as any).store_slug || "");
         setPaymentInstructions((data as any).payment_instructions || "");
       }
       setLoading(false);
@@ -48,6 +50,8 @@ const DashboardSettings = () => {
     if (!user) return;
     setSaving(true);
 
+    const slugValue = storeSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-") || null;
+
     const { error } = await supabase
       .from("profiles" as any)
       .upsert({
@@ -55,6 +59,7 @@ const DashboardSettings = () => {
         store_name: storeName.trim(),
         whatsapp_number: whatsapp.trim(),
         payment_instructions: paymentInstructions.trim(),
+        store_slug: slugValue,
         updated_at: new Date().toISOString(),
       } as any);
 
@@ -66,9 +71,16 @@ const DashboardSettings = () => {
     setSaving(false);
   };
 
+  const storeLink = (() => {
+    if (!user) return "";
+    const slug = storeSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-");
+    const path = slug || user.id.replace(/-/g, "").slice(0, 6);
+    return `${window.location.origin}/s/${path}`;
+  })();
+
   const handleCopyLink = () => {
     if (!user) return;
-    navigator.clipboard.writeText(`${window.location.origin}/s/${user.id}`);
+    navigator.clipboard.writeText(storeLink);
     setLinkCopied(true);
     toast({ title: "تم نسخ رابط المتجر! ✅" });
     setTimeout(() => setLinkCopied(false), 2000);
@@ -110,6 +122,11 @@ const DashboardSettings = () => {
           />
           <p className="text-xs text-muted-foreground">ستظهر هذه المعلومات للزبون عند اختيار طريقة دفع غير نقدية.</p>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="storeSlug">رابط المتجر المخصص (slug)</Label>
+          <Input id="storeSlug" placeholder="amen-watches" value={storeSlug} onChange={(e) => setStoreSlug(e.target.value)} dir="ltr" />
+          <p className="text-xs text-muted-foreground">أحرف إنجليزية صغيرة وأرقام وشرطات فقط. سيصبح رابطك: /s/{storeSlug || "your-slug"}</p>
+        </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           حفظ الإعدادات
@@ -120,7 +137,7 @@ const DashboardSettings = () => {
         <h2 className="font-semibold">رابط متجرك العام</h2>
         <p className="text-sm text-muted-foreground">شارك هذا الرابط مع الزبائن لتصفح منتجاتك.</p>
         <div className="flex items-center gap-2">
-          <Input readOnly value={user ? `${window.location.origin}/s/${user.id}` : ""} className="text-xs" />
+          <Input readOnly value={storeLink} className="text-xs" dir="ltr" />
           <Button variant="outline" size="sm" onClick={handleCopyLink} className="shrink-0 gap-1.5">
             {linkCopied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
             {linkCopied ? "تم النسخ" : "نسخ"}
