@@ -98,7 +98,7 @@ ${productDescription.trim()}
 
     for (let attempt = 0; attempt < 2; attempt++) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000);
+      const timeout = setTimeout(() => controller.abort(), 25000);
 
       try {
         const response = await callAI(userPrompt, LOVABLE_API_KEY, controller.signal);
