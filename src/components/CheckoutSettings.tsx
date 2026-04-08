@@ -175,26 +175,26 @@ const CheckoutSettings = () => {
         <p className="text-xs text-muted-foreground">فعّل طرق الدفع وأضف تفاصيل الحساب لكل طريقة. ستظهر للزبائن عند الطلب.</p>
         <div className="space-y-3">
           {paymentMethods.map((method) => (
-            <div key={method.id} className="rounded-lg border p-3 space-y-2">
-              <div className="flex justify-between items-center w-full">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Switch
-                    checked={method.enabled}
-                    onCheckedChange={() => toggleMethod(method.id)}
-                    className="shrink-0"
-                  />
+            <div key={method.id} className="space-y-2">
+              <div className="flex flex-row items-center justify-between w-full gap-4 p-4 border rounded-md">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="text-sm font-medium truncate">{method.name}</span>
+                  {isCustomMethod(method.id) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => removeMethod(method.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
-                {isCustomMethod(method.id) && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => removeMethod(method.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Switch
+                  checked={method.enabled}
+                  onCheckedChange={() => toggleMethod(method.id)}
+                  className="shrink-0"
+                />
               </div>
               {method.enabled && (
                 <Input
