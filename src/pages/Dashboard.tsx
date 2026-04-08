@@ -1,5 +1,7 @@
 import { Outlet, useLocation, Link } from "react-router-dom";
-import { Package, ShoppingCart, Sparkles, Settings, LogOut, BarChart3, Megaphone } from "lucide-react";
+import { Package, ShoppingCart, Sparkles, Settings, LogOut, BarChart3, Megaphone, Link2, Check } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
