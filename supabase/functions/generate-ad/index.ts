@@ -57,7 +57,7 @@ async function callAI(prompt: string, apiKey: string, signal: AbortSignal) {
         { role: "user", content: prompt },
       ],
       temperature: 0.9,
-      max_tokens: 400,
+      max_tokens: 512,
     }),
   });
 }
@@ -81,10 +81,10 @@ serve(async (req) => {
 
     const userPrompt = `الزاوية التسويقية: ${angle || "ركّز على الجودة والقيمة"}
 
-معلومات المنتج:
+معلومات المنتج (استخدم كل التفاصيل التقنية الموجودة هنا حرفياً في النقاط):
 ${productDescription.trim()}
 
-اكتب إعلان قصير ومباشر (100 كلمة تقريباً):`;
+تعليمات: اذكر كل التفاصيل التقنية من الوصف أعلاه في النقاط. لا تختصر أو تستبدل بعبارات عامة. اكتب إعلان بين 100-130 كلمة:`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
