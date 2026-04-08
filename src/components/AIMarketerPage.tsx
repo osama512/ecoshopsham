@@ -72,9 +72,11 @@ const AIMarketerPage = () => {
 
     try {
       const angle = AD_ANGLES[Math.floor(Math.random() * AD_ANGLES.length)];
+      const payload = { productDescription: input.trim(), angle };
+      console.log("generate-ad payload:", payload);
 
       const { data, error } = await supabase.functions.invoke("generate-ad", {
-        body: { productDescription: input.trim(), angle },
+        body: payload,
       });
 
       if (error) {
