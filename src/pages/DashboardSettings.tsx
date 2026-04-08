@@ -52,6 +52,22 @@ const DashboardSettings = () => {
 
     const slugValue = storeSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-") || null;
 
+    // Check slug uniqueness
+    if (slugValue) {
+      const { data: existing } = await supabase
+        .from("profiles" as any)
+        .select("id")
+        .eq("store_slug", slugValue)
+        .neq("id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        toast({ title: "عذراً، هذا الرابط مستخدم من قبل متجر آخر. يرجى اختيار اسم مختلف.", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from("profiles" as any)
       .upsert({
