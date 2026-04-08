@@ -29,6 +29,30 @@ const navItems = [
   { title: "الإعدادات", url: "/dashboard/settings", icon: Settings },
 ];
 
+function CopyStoreLinkButton({ collapsed }: { collapsed: boolean }) {
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const link = `${window.location.origin}/s/${user?.id || "store"}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    toast.success("تم نسخ الرابط بنجاح! 🔗");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button
+      onClick={handleCopy}
+      size="sm"
+      className="w-full gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold"
+    >
+      {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+      {!collapsed && (copied ? "تم النسخ!" : "نسخ رابط المتجر")}
+    </Button>
+  );
+}
+
 function DashboardSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -38,10 +62,11 @@ function DashboardSidebar() {
   return (
     <Sidebar collapsible="icon" side="right">
       <SidebarContent>
-        <div className="px-4 py-4">
+        <div className="px-4 py-4 space-y-3">
           <h1 className="text-lg font-display font-bold tracking-tight">
             {collapsed ? "S" : <>Syria<span className="text-secondary">Biz</span></>}
           </h1>
+          <CopyStoreLinkButton collapsed={collapsed} />
         </div>
         <SidebarGroup>
           <SidebarGroupLabel>القائمة</SidebarGroupLabel>
