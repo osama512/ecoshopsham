@@ -123,9 +123,27 @@ const DashboardSettings = () => {
           <p className="text-xs text-muted-foreground">ستظهر هذه المعلومات للزبون عند اختيار طريقة دفع غير نقدية.</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="storeSlug">رابط المتجر المخصص (slug)</Label>
-          <Input id="storeSlug" placeholder="amen-watches" value={storeSlug} onChange={(e) => setStoreSlug(e.target.value)} dir="ltr" />
-          <p className="text-xs text-muted-foreground">أحرف إنجليزية صغيرة وأرقام وشرطات فقط. سيصبح رابطك: /s/{storeSlug || "your-slug"}</p>
+          <Label htmlFor="storeSlug">رابط المتجر المخصص</Label>
+          <div className="flex items-center gap-0 rounded-md border border-input overflow-hidden" dir="ltr">
+            <span className="bg-muted px-3 py-2 text-xs text-muted-foreground whitespace-nowrap border-r border-input select-none">
+              {window.location.host}/s/
+            </span>
+            <input
+              id="storeSlug"
+              className="flex-1 h-10 bg-background px-3 py-2 text-sm outline-none"
+              placeholder="amen-watches"
+              value={storeSlug}
+              onChange={(e) => {
+                const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-");
+                setStoreSlug(val);
+              }}
+              dir="ltr"
+            />
+          </div>
+          {storeSlug && !/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(storeSlug) && storeSlug.length > 1 && (
+            <p className="text-xs text-destructive">يجب أن يبدأ وينتهي بحرف أو رقم، بدون مسافات أو أحرف عربية.</p>
+          )}
+          <p className="text-xs text-muted-foreground">أحرف إنجليزية صغيرة، أرقام وشرطات فقط.</p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
