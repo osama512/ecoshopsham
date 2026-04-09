@@ -61,7 +61,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
   // Coupon state
   const [promoCode, setPromoCode] = useState("");
   const [promoChecking, setPromoChecking] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_type: string; discount_value: number } | null>(null);
   const [promoError, setPromoError] = useState("");
 
   useEffect(() => {
@@ -120,8 +120,12 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
   const selectedShipping = shippingZones.find((z) => z.id === selectedShippingId);
   const shippingCost = selectedShipping?.price ?? 0;
   const subtotal = Number(product.price) + shippingCost;
-  const discountAmount = appliedCoupon ? Math.round(subtotal * appliedCoupon.discount_percent / 100) : 0;
-  const totalPrice = subtotal - discountAmount;
+  const discountAmount = appliedCoupon
+    ? appliedCoupon.discount_type === 'fixed'
+      ? Math.min(appliedCoupon.discount_value, subtotal)
+      : Math.round(subtotal * appliedCoupon.discount_value / 100)
+    : 0;
+  const totalPrice = Math.max(0, subtotal - discountAmount);
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -130,18 +134,18 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
     setAppliedCoupon(null);
 
     const { data, error } = await (supabase.from("coupons") as any)
-      .select("code, discount_percent")
+      .select("code, discount_type, discount_value")
       .eq("merchant_id", merchantId)
       .eq("code", promoCode.trim().toUpperCase())
-      .eq("active", true)
+      .eq("is_active", true)
       .maybeSingle();
 
     setPromoChecking(false);
     if (error || !data) {
-      setPromoError("رمز الخصم غير صالح");
+      setPromoError("رمز الخصم غير صالح أو غير نشط");
       return;
     }
-    setAppliedCoupon({ code: data.code, discount_percent: data.discount_percent });
+    setAppliedCoupon({ code: data.code, discount_type: data.discount_type, discount_value: Number(data.discount_value) });
   };
 
   const phoneValid = isValidPhone(phone);
@@ -191,11 +195,17 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
       message += `🚚 الشحن: ${selectedShipping.name} — ${shippingCost.toLocaleString()} ل.س\n`;
     }
 
+    message += `📊 المجموع: ${subtotal.toLocaleString()} ل.س\n`;
+
     if (appliedCoupon) {
-      message += `🏷️ كوبون: ${appliedCoupon.code} (-${appliedCoupon.discount_percent}%) = -${discountAmount.toLocaleString()} ل.س\n`;
+      const discLabel = appliedCoupon.discount_type === 'fixed'
+        ? `${appliedCoupon.discount_value.toLocaleString()} ل.س`
+        : `${appliedCoupon.discount_value}%`;
+      message += `🏷️ كود الخصم: ${appliedCoupon.code}\n`;
+      message += `💸 قيمة الخصم: ${discLabel} = -${discountAmount.toLocaleString()} ل.س\n`;
     }
 
-    message += `💵 الإجمالي: ${totalPrice.toLocaleString()} ل.س\n`;
+    message += `💵 الإجمالي النهائي: ${totalPrice.toLocaleString()} ل.س\n`;
 
     message +=
       `👤 الاسم: ${fullName.trim()}\n` +
@@ -346,7 +356,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
             {appliedCoupon && (
               <Badge variant="secondary" className="gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                خصم {appliedCoupon.discount_percent}% — {appliedCoupon.code}
+                خصم {appliedCoupon.discount_type === 'fixed' ? `${appliedCoupon.discount_value.toLocaleString()} ل.س` : `${appliedCoupon.discount_value}%`} — {appliedCoupon.code}
               </Badge>
             )}
           </div>

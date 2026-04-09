@@ -19,6 +19,8 @@ export type Database = {
           code: string
           created_at: string | null
           discount_percent: number
+          discount_type: string
+          discount_value: number
           id: string
           is_active: boolean | null
           merchant_id: string
@@ -27,6 +29,8 @@ export type Database = {
           code: string
           created_at?: string | null
           discount_percent?: number
+          discount_type?: string
+          discount_value?: number
           id?: string
           is_active?: boolean | null
           merchant_id: string
@@ -35,6 +39,8 @@ export type Database = {
           code?: string
           created_at?: string | null
           discount_percent?: number
+          discount_type?: string
+          discount_value?: number
           id?: string
           is_active?: boolean | null
           merchant_id?: string
