@@ -12,8 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 interface Coupon {
   id: string;
   code: string;
+  discount_type: string;
+  discount_value: number;
   discount_percent: number;
-  active: boolean;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -80,8 +82,10 @@ const DashboardMarketing = () => {
     const { error } = await (supabase.from("coupons") as any).insert({
       merchant_id: user!.id,
       code: newCode.trim().toUpperCase(),
+      discount_type: "percentage",
+      discount_value: discount,
       discount_percent: discount,
-      active: true,
+      is_active: true,
     });
     setSavingCoupon(false);
     if (error) {
@@ -168,7 +172,7 @@ const DashboardMarketing = () => {
                 <div key={c.id} className="flex items-center justify-between border rounded-lg p-3">
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="font-mono text-sm">{c.code}</Badge>
-                    <span className="text-sm font-bold text-primary">{c.discount_percent}%</span>
+                    <span className="text-sm font-bold text-primary">{c.discount_value || c.discount_percent}%</span>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => deleteCoupon(c.id)} className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
