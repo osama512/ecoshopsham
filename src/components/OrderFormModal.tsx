@@ -119,13 +119,13 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
   const selectedShipping = shippingZones.find((z) => z.id === selectedShippingId);
   const shippingCost = selectedShipping?.price ?? 0;
-  const subtotal = Number(product.price) + shippingCost;
+  const productSubtotal = Number(product.price);
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_type === 'fixed'
-      ? Math.min(appliedCoupon.discount_value, subtotal)
-      : Math.round(subtotal * appliedCoupon.discount_value / 100)
+      ? Math.min(appliedCoupon.discount_value, productSubtotal)
+      : Math.round(productSubtotal * appliedCoupon.discount_value / 100)
     : 0;
-  const totalPrice = Math.max(0, subtotal - discountAmount);
+  const totalPrice = Math.max(0, productSubtotal - discountAmount) + shippingCost;
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -189,20 +189,18 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
     let message =
       `🛒 طلب جديد من SyriaBiz\n\n` +
       `📦 المنتج: ${product.name}\n` +
-      `💰 السعر: ${Number(product.price).toLocaleString()} ل.س\n`;
-
-    if (selectedShipping) {
-      message += `🚚 الشحن: ${selectedShipping.name} — ${shippingCost.toLocaleString()} ل.س\n`;
-    }
-
-    message += `📊 المجموع: ${subtotal.toLocaleString()} ل.س\n`;
+      `💰 المجموع: ${productSubtotal.toLocaleString()} ل.س\n`;
 
     if (appliedCoupon) {
       const discLabel = appliedCoupon.discount_type === 'fixed'
         ? `${appliedCoupon.discount_value.toLocaleString()} ل.س`
         : `${appliedCoupon.discount_value}%`;
       message += `🏷️ كود الخصم: ${appliedCoupon.code}\n`;
-      message += `💸 قيمة الخصم: ${discLabel} = -${discountAmount.toLocaleString()} ل.س\n`;
+      message += `💸 الخصم: ${discLabel} = -${discountAmount.toLocaleString()} ل.س\n`;
+    }
+
+    if (selectedShipping) {
+      message += `🚚 أجرة التوصيل: ${selectedShipping.name} — ${shippingCost.toLocaleString()} ل.س\n`;
     }
 
     message += `💵 الإجمالي النهائي: ${totalPrice.toLocaleString()} ل.س\n`;
@@ -364,23 +362,23 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
           {/* Order Summary */}
           <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
             <div className="flex justify-between text-sm">
-              <span>سعر المنتج</span>
-              <span className="font-display font-bold">{Number(product.price).toLocaleString()} ل.س</span>
+              <span>المجموع</span>
+              <span className="font-display font-bold">{productSubtotal.toLocaleString()} ل.س</span>
             </div>
-            {selectedShipping && (
-              <div className="flex justify-between text-sm">
-                <span>الشحن ({selectedShipping.name})</span>
-                <span className="font-display font-bold">{shippingCost.toLocaleString()} ل.س</span>
-              </div>
-            )}
             {appliedCoupon && (
               <div className="flex justify-between text-sm text-green-600">
-                <span>خصم ({appliedCoupon.code})</span>
+                <span>الخصم ({appliedCoupon.code})</span>
                 <span className="font-display font-bold">-{discountAmount.toLocaleString()} ل.س</span>
               </div>
             )}
+            {selectedShipping && (
+              <div className="flex justify-between text-sm">
+                <span>أجرة التوصيل ({selectedShipping.name})</span>
+                <span className="font-display font-bold">{shippingCost.toLocaleString()} ل.س</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5 mt-1.5">
-              <span>الإجمالي</span>
+              <span>الإجمالي النهائي</span>
               <span className="font-display text-secondary">{totalPrice.toLocaleString()} ل.س</span>
             </div>
           </div>
