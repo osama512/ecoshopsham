@@ -67,9 +67,11 @@ const DashboardProducts = () => {
   };
 
   useEffect(() => {
+    if (!user?.id) return;
+
     fetchProducts();
     fetchPlan();
-  }, [user]);
+  }, [user?.id]);
 
   const isFreePlan = planType === "free";
   const atLimit = isFreePlan && products.length >= FREE_PLAN_LIMIT;

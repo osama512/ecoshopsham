@@ -57,8 +57,10 @@ const OrdersPage = () => {
   };
 
   useEffect(() => {
+    if (!user?.id) return;
+
     fetchOrders();
-  }, [user]);
+  }, [user?.id]);
 
   const updateStatus = async (orderId: string, newStatus: string, oldStatus: string, orderDetails: unknown) => {
     const { error } = await (supabase.from("orders") as any)

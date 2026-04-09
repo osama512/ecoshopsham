@@ -71,8 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setTrialDaysLeft(0);
   }, []);
 
-  const syncAuthState = useCallback(
-    (nextSession: Session | null, preserveUserReference = false) => {
+  const syncAuthState = useCallback((nextSession: Session | null) => {
       setSession((current) => {
         if (
           current?.access_token === nextSession?.access_token &&
@@ -88,15 +87,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser((current) => {
         const nextUser = nextSession?.user ?? null;
 
-        if (preserveUserReference && current?.id && current.id === nextUser?.id) {
+        if (current?.id && current.id === nextUser?.id) {
           return current;
         }
 
         return nextUser;
       });
-    },
-    []
-  );
+    }, []);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -156,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, nextSession) => {
-        syncAuthState(nextSession, event === "TOKEN_REFRESHED");
+        syncAuthState(nextSession);
 
         if (nextSession?.user) {
           if (event === "SIGNED_IN" || event === "USER_UPDATED") {
