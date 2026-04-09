@@ -16,14 +16,16 @@ const DashboardAnalytics = () => {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    const userId = user?.id;
+    if (!userId) return;
+
     const load = async () => {
       setLoading(true);
 
       const { data: orders } = await supabase
         .from("orders")
         .select("*")
-        .eq("merchant_id", user.id)
+        .eq("merchant_id", userId)
         .order("created_at", { ascending: false });
 
       const allOrders = orders ?? [];
@@ -65,8 +67,9 @@ const DashboardAnalytics = () => {
 
       setLoading(false);
     };
+
     load();
-  }, [user]);
+  }, [user?.id]);
 
   if (loading) {
     return (

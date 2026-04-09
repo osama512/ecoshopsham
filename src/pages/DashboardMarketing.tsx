@@ -32,7 +32,9 @@ const DashboardMarketing = () => {
   const [customers, setCustomers] = useState<{ name: string; phone: string; lastOrder: string }[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    const userId = user?.id;
+    if (!userId) return;
+
     const load = async () => {
       setLoading(true);
       await Promise.all([fetchCoupons(), fetchCustomers()]);
@@ -42,7 +44,7 @@ const DashboardMarketing = () => {
     const fetchCoupons = async () => {
       const { data } = await (supabase.from("coupons") as any)
         .select("*")
-        .eq("merchant_id", user!.id)
+        .eq("merchant_id", userId)
         .order("created_at", { ascending: false });
       setCoupons(data ?? []);
     };
@@ -50,7 +52,7 @@ const DashboardMarketing = () => {
     const fetchCustomers = async () => {
       const { data } = await (supabase.from("orders") as any)
         .select("customer_name, customer_phone, created_at")
-        .eq("merchant_id", user!.id)
+        .eq("merchant_id", userId)
         .order("created_at", { ascending: false });
       if (data) {
         const seen = new Map<string, { name: string; phone: string; lastOrder: string }>();
@@ -65,7 +67,7 @@ const DashboardMarketing = () => {
     };
 
     load();
-  }, [user]);
+  }, [user?.id]);
 
   const addCoupon = async () => {
     if (!newCode.trim() || !newDiscount) return;

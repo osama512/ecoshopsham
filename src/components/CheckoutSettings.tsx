@@ -45,13 +45,15 @@ const CheckoutSettings = () => {
   const [newMethodName, setNewMethodName] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    const userId = user?.id;
+    if (!userId) return;
+
     const fetchSettings = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("store_settings" as any)
         .select("*")
-        .eq("merchant_id", user.id)
+        .eq("merchant_id", userId)
         .maybeSingle();
 
       if (!error && data) {
@@ -82,8 +84,9 @@ const CheckoutSettings = () => {
       }
       setLoading(false);
     };
+
     fetchSettings();
-  }, [user]);
+  }, [user?.id]);
 
   const toggleMethod = (id: string) => {
     setPaymentMethods((prev) =>

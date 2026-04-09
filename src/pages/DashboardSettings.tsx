@@ -23,13 +23,15 @@ const DashboardSettings = () => {
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    const userId = user?.id;
+    if (!userId) return;
+
     const fetchProfile = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("profiles" as any)
         .select("*")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single();
 
       if (!error && data) {
@@ -40,8 +42,9 @@ const DashboardSettings = () => {
       }
       setLoading(false);
     };
+
     fetchProfile();
-  }, [user]);
+  }, [user?.id]);
 
   const handleSave = async () => {
     if (!user) return;
