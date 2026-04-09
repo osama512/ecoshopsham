@@ -119,13 +119,13 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
   const selectedShipping = shippingZones.find((z) => z.id === selectedShippingId);
   const shippingCost = selectedShipping?.price ?? 0;
-  const subtotal = Number(product.price) + shippingCost;
+  const productSubtotal = Number(product.price);
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_type === 'fixed'
-      ? Math.min(appliedCoupon.discount_value, subtotal)
-      : Math.round(subtotal * appliedCoupon.discount_value / 100)
+      ? Math.min(appliedCoupon.discount_value, productSubtotal)
+      : Math.round(productSubtotal * appliedCoupon.discount_value / 100)
     : 0;
-  const totalPrice = Math.max(0, subtotal - discountAmount);
+  const totalPrice = Math.max(0, productSubtotal - discountAmount) + shippingCost;
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
