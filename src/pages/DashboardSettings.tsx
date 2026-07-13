@@ -8,18 +8,48 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Link2, Check, Crown, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  Link2,
+  Check,
+  Crown,
+  Sparkles,
+  Globe,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
 import CheckoutSettings from "@/components/CheckoutSettings";
+import {
+  isApexDomain,
+  isValidCustomDomain,
+  normalizeDomain,
+  type DomainStatus,
+} from "@/lib/customDomain";
+
+type DnsHint = { type: string; name: string; value: string; note?: string };
+
+const statusLabel: Record<string, string> = {
+  pending: "بانتظار DNS",
+  verifying: "جاري التحقق",
+  active: "مفعّل",
+  error: "خطأ في DNS",
+};
 
 const DashboardSettings = () => {
-  const { user, storeSlug: contextSlug, refetchProfile } = useAuth();
+  const { user, refetchProfile } = useAuth();
   const { toast } = useToast();
   const [storeName, setStoreName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [storeSlug, setStoreSlug] = useState("");
   const [planType, setPlanType] = useState("free");
+  const [customDomain, setCustomDomain] = useState("");
+  const [domainStatus, setDomainStatus] = useState<DomainStatus>(null);
+  const [domainInput, setDomainInput] = useState("");
+  const [dnsHint, setDnsHint] = useState<DnsHint | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [domainBusy, setDomainBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
@@ -35,10 +65,27 @@ const DashboardSettings = () => {
         .single();
 
       if (!error && data) {
-        setStoreName((data as any).store_name || "");
-        setWhatsapp((data as any).whatsapp_number || "");
-        setPlanType((data as any).plan_type || "free");
-        setStoreSlug((data as any).store_slug || "");
+        const d = data as any;
+        setStoreName(d.store_name || "");
+        setWhatsapp(d.whatsapp_number || "");
+        setPlanType(d.plan_type || "free");
+        setStoreSlug(d.store_slug || "");
+        setCustomDomain(d.custom_domain || "");
+        setDomainInput(d.custom_domain || "");
+        setDomainStatus((d.domain_status as DomainStatus) || null);
+        if (d.custom_domain) {
+          const domain = d.custom_domain as string;
+          setDnsHint(
+            isApexDomain(domain)
+              ? { type: "A", name: "@", value: "76.76.21.21", note: "للنطاق الجذري" }
+              : {
+                  type: "CNAME",
+                  name: domain.split(".")[0],
+                  value: "cname.vercel-dns.com",
+                  note: "للنطاق الفرعي",
+                },
+          );
+        }
       }
       setLoading(false);
     };
@@ -86,8 +133,73 @@ const DashboardSettings = () => {
     setSaving(false);
   };
 
+  const invokeDomain = async (action: "connect" | "verify" | "remove", domain?: string) => {
+    setDomainBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-custom-domain", {
+        body: { action, domain },
+      });
+
+      if (error) {
+        toast({ title: "فشل الطلب", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      if (data?.error) {
+        toast({ title: "خطأ", description: data.error, variant: "destructive" });
+        return;
+      }
+
+      if (action === "remove") {
+        setCustomDomain("");
+        setDomainInput("");
+        setDomainStatus(null);
+        setDnsHint(null);
+        toast({ title: data?.message || "تم إزالة النطاق" });
+        return;
+      }
+
+      if (data?.domain) {
+        setCustomDomain(data.domain);
+        setDomainInput(data.domain);
+      }
+      if (data?.status) setDomainStatus(data.status as DomainStatus);
+      if (data?.dns) setDnsHint(data.dns as DnsHint);
+
+      toast({
+        title: data?.ok ? "تم بنجاح" : "تحقق من DNS",
+        description: data?.message,
+        variant: data?.ok ? "default" : "destructive",
+      });
+    } catch (e) {
+      toast({
+        title: "خطأ",
+        description: e instanceof Error ? e.message : "فشل الاتصال",
+        variant: "destructive",
+      });
+    } finally {
+      setDomainBusy(false);
+    }
+  };
+
+  const handleConnectDomain = async () => {
+    const domain = normalizeDomain(domainInput);
+    if (!isValidCustomDomain(domain)) {
+      toast({
+        title: "نطاق غير صالح",
+        description: "أدخل نطاقاً مثل shop.example.com بدون https",
+        variant: "destructive",
+      });
+      return;
+    }
+    await invokeDomain("connect", domain);
+  };
+
   const storeLink = (() => {
     if (!user) return "";
+    if (customDomain && domainStatus === "active") {
+      return `https://${customDomain}`;
+    }
     const slug = storeSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-");
     const path = slug || user.id.replace(/-/g, "").slice(0, 6);
     return `${window.location.origin}/s/${path}`;
@@ -154,6 +266,102 @@ const DashboardSettings = () => {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           حفظ الإعدادات
         </Button>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Globe className="h-4 w-4 text-secondary" />
+            نطاق خارجي (Custom Domain)
+          </h2>
+          {domainStatus && (
+            <Badge variant={domainStatus === "active" ? "default" : domainStatus === "error" ? "destructive" : "secondary"}>
+              {statusLabel[domainStatus] || domainStatus}
+            </Badge>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          اربط نطاقك الخاص (مثل shop.example.com) ليعرض متجرك على هذا العنوان عبر Vercel.
+        </p>
+
+        <div className="space-y-2">
+          <Label htmlFor="customDomain">اسم النطاق</Label>
+          <Input
+            id="customDomain"
+            placeholder="shop.example.com"
+            value={domainInput}
+            onChange={(e) => setDomainInput(e.target.value.toLowerCase())}
+            dir="ltr"
+            disabled={domainBusy || domainStatus === "active"}
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {domainStatus !== "active" && (
+            <Button onClick={handleConnectDomain} disabled={domainBusy} className="gap-2">
+              {domainBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+              {customDomain ? "تحديث الربط" : "ربط النطاق"}
+            </Button>
+          )}
+          {customDomain && (
+            <Button
+              variant="outline"
+              onClick={() => invokeDomain("verify", customDomain)}
+              disabled={domainBusy}
+              className="gap-2"
+            >
+              {domainBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              التحقق من DNS
+            </Button>
+          )}
+          {customDomain && (
+            <Button
+              variant="ghost"
+              onClick={() => invokeDomain("remove")}
+              disabled={domainBusy}
+              className="gap-2 text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              إزالة
+            </Button>
+          )}
+        </div>
+
+        {dnsHint && domainStatus !== "active" && (
+          <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-sm" dir="ltr">
+            <p className="text-xs text-muted-foreground" dir="rtl">
+              أضف هذا السجل عند مزوّد النطاق (Namecheap / Cloudflare / GoDaddy…):
+            </p>
+            <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+              <div>
+                <span className="text-muted-foreground">Type</span>
+                <p className="font-semibold">{dnsHint.type}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Name</span>
+                <p className="font-semibold">{dnsHint.name}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Value</span>
+                <p className="font-semibold break-all">{dnsHint.value}</p>
+              </div>
+            </div>
+            {dnsHint.note && (
+              <p className="text-xs text-muted-foreground" dir="rtl">
+                {dnsHint.note}
+              </p>
+            )}
+          </div>
+        )}
+
+        {domainStatus === "active" && customDomain && (
+          <p className="text-sm text-green-700 dark:text-green-400">
+            متجرك يعمل على{" "}
+            <a className="underline font-medium" href={`https://${customDomain}`} target="_blank" rel="noreferrer" dir="ltr">
+              https://{customDomain}
+            </a>
+          </p>
+        )}
       </Card>
 
       <Card className="p-5 space-y-3">

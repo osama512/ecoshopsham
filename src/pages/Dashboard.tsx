@@ -68,7 +68,14 @@ function DashboardSidebar() {
       <SidebarContent>
         <div className="px-4 py-4 space-y-3">
           <h1 className="text-lg font-display font-bold tracking-tight">
-            {collapsed ? "S" : <>Syria<span className="text-secondary">Biz</span></>}
+            {collapsed ? (
+              <img src="/favicon.png?v=2" alt="ecoshopsham" className="h-7 w-7 rounded-md" />
+            ) : (
+              <span className="flex items-center gap-2">
+                <img src="/favicon.png?v=2" alt="" className="h-7 w-7 rounded-md" />
+                ecoshop<span className="text-secondary">sham</span>
+              </span>
+            )}
           </h1>
           <CopyStoreLinkButton collapsed={collapsed} />
         </div>

@@ -122,6 +122,9 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          custom_domain: string | null
+          domain_status: string | null
+          domain_verified_at: string | null
           email: string | null
           id: string
           payment_instructions: string | null
@@ -136,6 +139,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          custom_domain?: string | null
+          domain_status?: string | null
+          domain_verified_at?: string | null
           email?: string | null
           id: string
           payment_instructions?: string | null
@@ -150,6 +156,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          custom_domain?: string | null
+          domain_status?: string | null
+          domain_verified_at?: string | null
           email?: string | null
           id?: string
           payment_instructions?: string | null

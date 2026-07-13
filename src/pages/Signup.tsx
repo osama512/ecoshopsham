@@ -76,8 +76,9 @@ const Signup = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-display font-bold">
-            Syria<span className="text-secondary">Biz</span>
+          <h1 className="text-2xl font-display font-bold flex items-center justify-center gap-2">
+            <img src="/favicon.png?v=2" alt="" className="h-8 w-8 rounded-md" />
+            ecoshop<span className="text-secondary">sham</span>
           </h1>
           <p className="text-sm text-muted-foreground">إنشاء حساب تاجر جديد</p>
         </div>

@@ -13,50 +13,71 @@ import { productSlug } from "@/lib/slug";
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
 
-const Storefront = () => {
-  const { storeId } = useParams<{ storeId: string }>();
+type StorefrontProps = {
+  /** Override route param — merchant UUID, store_slug, short id, or custom domain hostname */
+  storeKey?: string;
+};
+
+const Storefront = ({ storeKey }: StorefrontProps) => {
+  const { storeId: paramStoreId } = useParams<{ storeId: string }>();
+  const storeId = storeKey || paramStoreId;
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [storeName, setStoreName] = useState("SyriaBiz Store");
+  const [storeName, setStoreName] = useState("ecoshopsham Store");
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
   const [suspended, setSuspended] = useState(false);
   const [trialExpired, setTrialExpired] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [resolvedMerchantId, setResolvedMerchantId] = useState<string>("");
 
   useEffect(() => {
     const fetchStore = async () => {
       setLoading(true);
+      setNotFound(false);
+      setSuspended(false);
+      setTrialExpired(false);
 
-      // Try to resolve storeId: could be a slug, short ID, or UUID
       let merchantId = storeId!;
-      
-      // If it doesn't look like a UUID, try slug lookup first
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId!);
-      
+      const looksLikeDomain = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(storeId!);
+
       if (!isUUID) {
-        // Try slug lookup
-        const { data: slugProfile } = await supabase
-          .from("profiles" as any)
-          .select("id")
-          .eq("store_slug", storeId!)
-          .maybeSingle();
-        
-        if (slugProfile) {
-          merchantId = (slugProfile as any).id;
-        } else {
-          // Try short ID match (first 6 chars of UUID without dashes)
-          const { data: allProfiles } = await supabase
+        if (looksLikeDomain) {
+          const { data: domainProfile } = await supabase
             .from("profiles" as any)
             .select("id")
-            .limit(500);
-          
-          if (allProfiles) {
-            const match = (allProfiles as any[]).find(
-              (p: any) => p.id.replace(/-/g, "").slice(0, 6) === storeId
-            );
-            if (match) merchantId = match.id;
+            .eq("custom_domain", storeId!.toLowerCase())
+            .maybeSingle();
+          if (domainProfile) {
+            merchantId = (domainProfile as any).id;
+          } else {
+            setNotFound(true);
+            setLoading(false);
+            return;
+          }
+        } else {
+          const { data: slugProfile } = await supabase
+            .from("profiles" as any)
+            .select("id")
+            .eq("store_slug", storeId!)
+            .maybeSingle();
+
+          if (slugProfile) {
+            merchantId = (slugProfile as any).id;
+          } else {
+            const { data: allProfiles } = await supabase
+              .from("profiles" as any)
+              .select("id")
+              .limit(500);
+
+            if (allProfiles) {
+              const match = (allProfiles as any[]).find(
+                (p: any) => p.id.replace(/-/g, "").slice(0, 6) === storeId
+              );
+              if (match) merchantId = match.id;
+            }
           }
         }
       }
@@ -67,9 +88,15 @@ const Storefront = () => {
         .eq("id", merchantId)
         .single();
 
+      if (!profile) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
       if (profile) {
         const p = profile as any;
-        setStoreName(p.store_name || "SyriaBiz Store");
+        setStoreName(p.store_name || "ecoshopsham Store");
         setWhatsapp(p.whatsapp_number || DEFAULT_WHATSAPP);
 
         if (p.status === "suspended") {
@@ -120,6 +147,12 @@ const Storefront = () => {
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-secondary" />
             <p className="text-sm text-muted-foreground">جاري تحميل المنتجات...</p>
+          </div>
+        ) : notFound ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <Store className="h-14 w-14 mx-auto mb-3 opacity-40" />
+            <p className="font-semibold text-lg">المتجر غير موجود</p>
+            <p className="text-sm mt-1">تحقق من الرابط أو إعدادات النطاق</p>
           </div>
         ) : suspended ? (
           <div className="text-center py-20 text-muted-foreground">
@@ -190,7 +223,7 @@ const Storefront = () => {
       </main>
 
       <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-8">
-        مدعوم من Syria<span className="text-secondary font-semibold">Biz</span>
+        مدعوم من ecoshop<span className="text-secondary font-semibold">sham</span>
       </footer>
 
       {selectedProduct && resolvedMerchantId && (

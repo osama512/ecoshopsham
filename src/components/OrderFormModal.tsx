@@ -187,7 +187,7 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
     const paymentLabel = payments.find((p) => p.value === paymentMethod)?.label ?? paymentMethod;
     let message =
-      `🛒 طلب جديد من SyriaBiz\n\n` +
+      `🛒 طلب جديد من ecoshopsham\n\n` +
       `📦 المنتج: ${product.name}\n` +
       `💰 المجموع: ${productSubtotal.toLocaleString()} ل.س\n`;
 

@@ -24,6 +24,7 @@ import AdminPlans from "./pages/AdminPlans";
 import Storefront from "./pages/Storefront";
 import ProductDetails from "./pages/ProductDetails";
 import NotFound from "./pages/NotFound";
+import { isCustomDomainHost } from "@/lib/customDomain";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,13 +37,75 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Redirect authenticated users based on role */
+/** Redirect authenticated users based on role (platform host only) */
 const RoleRedirect = () => {
   const { user, role, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Index />;
   if (role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/dashboard" replace />;
+};
+
+/** On a merchant custom domain, "/" is the storefront */
+const CustomDomainHome = () => {
+  const host = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+  return <Storefront storeKey={host} />;
+};
+
+const AppRoutes = () => {
+  const onCustomDomain = isCustomDomainHost();
+
+  if (onCustomDomain) {
+    return (
+      <Routes>
+        <Route path="/" element={<CustomDomainHome />} />
+        <Route path="/p/:slug" element={<ProductDetails />} />
+        <Route path="/product/:id" element={<ProductDetails />} />
+        <Route path="/s/:storeId" element={<Storefront />} />
+        <Route path="*" element={<CustomDomainHome />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<RoleRedirect />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/s/:storeId" element={<Storefront />} />
+      <Route path="/p/:slug" element={<ProductDetails />} />
+      <Route path="/product/:id" element={<ProductDetails />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard/products" replace />} />
+        <Route path="products" element={<DashboardProducts />} />
+        <Route path="orders" element={<DashboardOrders />} />
+        <Route path="ai" element={<DashboardAI />} />
+        <Route path="analytics" element={<DashboardAnalytics />} />
+        <Route path="marketing" element={<DashboardMarketing />} />
+        <Route path="settings" element={<DashboardSettings />} />
+      </Route>
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        }
+      >
+        <Route index element={<AdminOverview />} />
+        <Route path="merchants" element={<AdminMerchants />} />
+        <Route path="plans" element={<AdminPlans />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 };
 
 const App = () => (
@@ -52,45 +115,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<RoleRedirect />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/s/:storeId" element={<Storefront />} />
-            <Route path="/p/:slug" element={<ProductDetails />} />
-            {/* Legacy redirect */}
-            <Route path="/product/:id" element={<ProductDetails />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/dashboard/products" replace />} />
-              <Route path="products" element={<DashboardProducts />} />
-              <Route path="orders" element={<DashboardOrders />} />
-              <Route path="ai" element={<DashboardAI />} />
-              <Route path="analytics" element={<DashboardAnalytics />} />
-              <Route path="marketing" element={<DashboardMarketing />} />
-              <Route path="settings" element={<DashboardSettings />} />
-            </Route>
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              }
-            >
-              <Route index element={<AdminOverview />} />
-              <Route path="merchants" element={<AdminMerchants />} />
-              <Route path="plans" element={<AdminPlans />} />
-              
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

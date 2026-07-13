@@ -34,7 +34,15 @@ function AdminSidebar() {
       <SidebarContent>
         <div className="px-4 py-4">
           <h1 className="text-lg font-display font-bold tracking-tight">
-            {collapsed ? "A" : <>Syria<span className="text-secondary">Biz</span> <span className="text-xs text-muted-foreground">إدارة</span></>}
+            {collapsed ? (
+              <img src="/favicon.png?v=2" alt="ecoshopsham" className="h-7 w-7 rounded-md" />
+            ) : (
+              <span className="flex items-center gap-2">
+                <img src="/favicon.png?v=2" alt="" className="h-7 w-7 rounded-md" />
+                ecoshop<span className="text-secondary">sham</span>
+                <span className="text-xs text-muted-foreground">إدارة</span>
+              </span>
+            )}
           </h1>
         </div>
         <SidebarGroup>

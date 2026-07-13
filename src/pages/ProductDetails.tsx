@@ -8,6 +8,7 @@ import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import { extractIdFromSlug } from "@/lib/slug";
+import { isCustomDomainHost, storefrontPathForMerchant } from "@/lib/customDomain";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -18,9 +19,12 @@ const ProductDetails = () => {
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [storeName, setStoreName] = useState("SyriaBiz Store");
+  const [storeName, setStoreName] = useState("ecoshopsham Store");
   const [whatsapp, setWhatsapp] = useState(DEFAULT_WHATSAPP);
   const [merchantId, setMerchantId] = useState("");
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
+  const [customDomain, setCustomDomain] = useState<string | null>(null);
+  const [domainStatus, setDomainStatus] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
 
@@ -63,15 +67,18 @@ const ProductDetails = () => {
           .single();
 
         if (profile) {
-          const p = profile as any;
-          setStoreName(p.store_name || "SyriaBiz Store");
-          setWhatsapp(p.whatsapp_number || DEFAULT_WHATSAPP);
+          const pr = profile as any;
+          setStoreName(pr.store_name || "ecoshopsham Store");
+          setWhatsapp(pr.whatsapp_number || DEFAULT_WHATSAPP);
+          setStoreSlug(pr.store_slug ?? null);
+          setCustomDomain(pr.custom_domain ?? null);
+          setDomainStatus(pr.domain_status ?? null);
 
-          if (p.status === "suspended") { setUnavailable(true); }
+          if (pr.status === "suspended") { setUnavailable(true); }
 
-          const planType = p.plan_type ?? "free";
-          if (planType !== "pro" && planType !== "enterprise" && p.created_at) {
-            const diff = (Date.now() - new Date(p.created_at).getTime()) / 86400000;
+          const planType = pr.plan_type ?? "free";
+          if (planType !== "pro" && planType !== "enterprise" && pr.created_at) {
+            const diff = (Date.now() - new Date(pr.created_at).getTime()) / 86400000;
             if (diff > TRIAL_DAYS) setUnavailable(true);
           }
         }
@@ -82,6 +89,25 @@ const ProductDetails = () => {
   }, [productId]);
 
   const outOfStock = (product?.stock_quantity ?? 0) <= 0;
+
+  const goToStore = () => {
+    if (isCustomDomainHost()) {
+      navigate("/");
+      return;
+    }
+    if (product?.merchant_id) {
+      navigate(
+        storefrontPathForMerchant({
+          storeSlug,
+          merchantId: product.merchant_id,
+          customDomain,
+          domainStatus,
+        })
+      );
+      return;
+    }
+    navigate(-1);
+  };
 
   if (loading) {
     return (
@@ -120,10 +146,7 @@ const ProductDetails = () => {
             variant="ghost"
             size="sm"
             className="gap-1.5 text-xs"
-            onClick={() => {
-              if (product.merchant_id) navigate(`/s/${product.merchant_id}`);
-              else navigate(-1);
-            }}
+            onClick={goToStore}
           >
             <ArrowRight className="h-4 w-4" />
             العودة للمتجر
@@ -186,7 +209,7 @@ const ProductDetails = () => {
       </main>
 
       <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-4">
-        مدعوم من Syria<span className="text-secondary font-semibold">Biz</span>
+        مدعوم من ecoshop<span className="text-secondary font-semibold">sham</span>
       </footer>
 
       {showOrder && merchantId && (

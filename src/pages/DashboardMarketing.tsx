@@ -110,7 +110,7 @@ const DashboardMarketing = () => {
 
   const messageCustomer = (phone: string) => {
     const num = phone.replace(/[^0-9]/g, "");
-    const msg = encodeURIComponent("مرحباً! لدينا عروض جديدة في متجرنا على SyriaBiz 🎉 تفضل بزيارة المتجر!");
+    const msg = encodeURIComponent("مرحباً! لدينا عروض جديدة في متجرنا على ecoshopsham 🎉 تفضل بزيارة المتجر!");
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
   };
 
