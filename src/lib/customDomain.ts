@@ -2,6 +2,8 @@
 const DEFAULT_PLATFORM_HOSTS = [
   "localhost",
   "127.0.0.1",
+  "ecoshopsham.shop",
+  "www.ecoshopsham.shop",
 ];
 
 function envPlatformHosts(): string[] {
