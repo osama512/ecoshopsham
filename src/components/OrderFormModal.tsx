@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, MessageCircle, Tag, CheckCircle2, Info, Wallet, Copy, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Product } from "@/integrations/supabase/db-types";
 import { formatSyrianWhatsApp, isValidPhone } from "@/lib/phone";
 import { useToast } from "@/hooks/use-toast";
+import { formatStorePrice, DEFAULT_STORE_CURRENCY, type StoreCurrency } from "@/lib/currency";
+import type { CartItem } from "@/contexts/CartContext";
 
 interface ShippingZone {
   id: string;
@@ -41,11 +42,14 @@ const SYRIAN_CITIES = [
 interface OrderFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: Product;
+  /** Cart line items (supports multi-product orders) */
+  items: CartItem[];
   merchantId: string;
   whatsapp: string;
   storeName?: string;
   logoUrl?: string | null;
+  currency?: StoreCurrency;
+  onOrderComplete?: () => void;
 }
 
 type Step = "form" | "shamcash_pay" | "paid";
@@ -53,11 +57,13 @@ type Step = "form" | "shamcash_pay" | "paid";
 const OrderFormModal = ({
   open,
   onOpenChange,
-  product,
+  items,
   merchantId,
   whatsapp,
   storeName,
   logoUrl,
+  currency = DEFAULT_STORE_CURRENCY,
+  onOrderComplete,
 }: OrderFormModalProps) => {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("form");
@@ -162,13 +168,15 @@ const OrderFormModal = ({
 
   const selectedShipping = shippingZones.find((z) => z.id === selectedShippingId);
   const shippingCost = selectedShipping?.price ?? 0;
-  const productSubtotal = Number(product.price);
+  const productSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_type === "fixed"
       ? Math.min(appliedCoupon.discount_value, productSubtotal)
       : Math.round((productSubtotal * appliedCoupon.discount_value) / 100)
     : 0;
   const totalPrice = Math.max(0, productSubtotal - discountAmount) + shippingCost;
+
+  const money = (n: number) => formatStorePrice(n, currency);
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -200,25 +208,28 @@ const OrderFormModal = ({
   const buildWhatsAppMessage = (extra?: string) => {
     const paymentLabel = payments.find((p) => p.value === paymentMethod)?.label ?? paymentMethod;
     const shop = storeName?.trim() || "المتجر";
-    let message =
-      `🛒 طلب جديد من متجر ${shop}\n\n` +
-      `📦 المنتج: ${product.name}\n` +
-      `💰 المجموع: ${productSubtotal.toLocaleString()} ل.س\n`;
+    let message = `🛒 طلب جديد من متجر ${shop}\n\n`;
+
+    items.forEach((item, idx) => {
+      message += `📦 ${idx + 1}. ${item.name}\n`;
+      message += `   الكمية: ${item.quantity} × ${money(item.price)} = ${money(item.price * item.quantity)}\n`;
+    });
+    message += `\n💰 مجموع المنتجات: ${money(productSubtotal)}\n`;
 
     if (appliedCoupon) {
       const discLabel =
         appliedCoupon.discount_type === "fixed"
-          ? `${appliedCoupon.discount_value.toLocaleString()} ل.س`
+          ? money(appliedCoupon.discount_value)
           : `${appliedCoupon.discount_value}%`;
       message += `🏷️ كود الخصم: ${appliedCoupon.code}\n`;
-      message += `💸 الخصم: ${discLabel} = -${discountAmount.toLocaleString()} ل.س\n`;
+      message += `💸 الخصم: ${discLabel} = -${money(discountAmount)}\n`;
     }
 
     if (selectedShipping) {
-      message += `🚚 أجرة التوصيل: ${selectedShipping.name} — ${shippingCost.toLocaleString()} ل.س\n`;
+      message += `🚚 أجرة التوصيل: ${selectedShipping.name} — ${money(shippingCost)}\n`;
     }
 
-    message += `💵 الإجمالي النهائي: ${totalPrice.toLocaleString()} ل.س\n`;
+    message += `💵 الإجمالي النهائي: ${money(totalPrice)}\n`;
     message +=
       `👤 الاسم: ${fullName.trim()}\n` +
       `📱 الهاتف: ${phone.trim()}\n` +
@@ -354,15 +365,19 @@ const OrderFormModal = ({
   };
 
   const handleSubmit = async () => {
+    if (!items.length) {
+      toast({ title: "السلة فارغة", variant: "destructive" });
+      return;
+    }
     if (!fullName.trim() || !city || !address.trim() || !phone.trim() || !phoneValid) return;
 
     setSaving(true);
 
-    const orderDetails = {
-      product_id: product.id,
-      product_name: product.name,
-      product_price: product.price,
-      quantity: 1,
+    const orderDetails = items.map((item) => ({
+      product_id: item.productId,
+      product_name: item.name,
+      product_price: item.price,
+      quantity: item.quantity,
       city,
       address: address.trim(),
       payment_method: paymentMethod,
@@ -371,7 +386,7 @@ const OrderFormModal = ({
       shipping_cost: shippingCost,
       coupon_code: appliedCoupon?.code || null,
       discount_amount: discountAmount,
-    };
+    }));
 
     const isShamCash = paymentMethod === "shamcash";
 
@@ -387,7 +402,7 @@ const OrderFormModal = ({
         merchant_id: merchantId,
         customer_name: fullName.trim(),
         customer_phone: phone.trim(),
-        order_details: [orderDetails],
+        order_details: orderDetails,
         total_price: totalPrice,
         status: "pending",
         payment_status: isShamCash ? "awaiting_payment" : "unpaid",
@@ -416,6 +431,7 @@ const OrderFormModal = ({
 
     openWhatsApp();
     resetForm();
+    onOrderComplete?.();
     onOpenChange(false);
   };
 
@@ -457,6 +473,7 @@ const OrderFormModal = ({
         : undefined,
     );
     resetForm();
+    onOrderComplete?.();
     onOpenChange(false);
   };
 
@@ -481,18 +498,25 @@ const OrderFormModal = ({
 
         {step === "form" && (
           <>
-            <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-3">
-              {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded-md object-cover" />
-              ) : (
-                <div className="w-14 h-14 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">📦</div>
-              )}
-              <div>
-                <p className="font-semibold text-sm">{product.name}</p>
-                <p className="font-display font-bold text-secondary text-sm">
-                  {Number(product.price).toLocaleString()} ل.س
-                </p>
-              </div>
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+              {items.map((item) => (
+                <div key={item.productId} className="flex items-center gap-3">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.name} className="w-12 h-12 rounded-md object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">📦</div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm line-clamp-1">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.quantity} × {money(item.price)}
+                    </p>
+                  </div>
+                  <p className="font-display font-bold text-secondary text-xs shrink-0">
+                    {money(item.price * item.quantity)}
+                  </p>
+                </div>
+              ))}
             </div>
 
             <div className="space-y-3 pt-1">
@@ -552,7 +576,7 @@ const OrderFormModal = ({
                           {zone.name}
                         </Label>
                         <span className="text-xs font-display font-bold text-muted-foreground">
-                          {zone.price.toLocaleString()} ل.س
+                          {money(zone.price)}
                         </span>
                       </div>
                     ))}
@@ -638,7 +662,7 @@ const OrderFormModal = ({
                     <CheckCircle2 className="h-3 w-3" />
                     خصم{" "}
                     {appliedCoupon.discount_type === "fixed"
-                      ? `${appliedCoupon.discount_value.toLocaleString()} ل.س`
+                      ? money(appliedCoupon.discount_value)
                       : `${appliedCoupon.discount_value}%`}{" "}
                     — {appliedCoupon.code}
                   </Badge>
@@ -648,23 +672,23 @@ const OrderFormModal = ({
               <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-sm">
                   <span>المجموع</span>
-                  <span className="font-display font-bold">{productSubtotal.toLocaleString()} ل.س</span>
+                  <span className="font-display font-bold">{money(productSubtotal)}</span>
                 </div>
                 {appliedCoupon && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>الخصم ({appliedCoupon.code})</span>
-                    <span className="font-display font-bold">-{discountAmount.toLocaleString()} ل.س</span>
+                    <span className="font-display font-bold">-{money(discountAmount)}</span>
                   </div>
                 )}
                 {selectedShipping && (
                   <div className="flex justify-between text-sm">
                     <span>أجرة التوصيل ({selectedShipping.name})</span>
-                    <span className="font-display font-bold">{shippingCost.toLocaleString()} ل.س</span>
+                    <span className="font-display font-bold">{money(shippingCost)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5 mt-1.5">
                   <span>الإجمالي النهائي</span>
-                  <span className="font-display text-secondary">{totalPrice.toLocaleString()} ل.س</span>
+                  <span className="font-display text-secondary">{money(totalPrice)}</span>
                 </div>
               </div>
 
@@ -723,7 +747,7 @@ const OrderFormModal = ({
                     </div>
                     <p>
                       المبلغ:{" "}
-                      <span className="font-display font-bold">{totalPrice.toLocaleString()} ل.س</span>
+                      <span className="font-display font-bold">{money(totalPrice)}</span>
                     </p>
                     <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                       {checkingPayment && <Loader2 className="h-3 w-3 animate-spin" />}

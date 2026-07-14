@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Package, Store, Loader2, Ban, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +11,8 @@ import StorefrontBanner from "@/components/StorefrontBanner";
 import ProductBannerSlider from "@/components/ProductBannerSlider";
 import WhatsAppChatButton from "@/components/WhatsAppChatButton";
 import StorefrontFooter from "@/components/StorefrontFooter";
+import AddToCartControls from "@/components/AddToCartControls";
+import { StoreCartButton } from "@/components/StoreCart";
 import { productSlug } from "@/lib/slug";
 import {
   DEFAULT_STORE_THEME,
@@ -21,8 +22,11 @@ import {
   themeToCssVars,
   type StoreTheme,
 } from "@/lib/storeTheme";
+import { formatStorePrice } from "@/lib/currency";
 import { useStoreBrandingMeta } from "@/hooks/useStoreBrandingMeta";
 import { isCustomDomainHost } from "@/lib/customDomain";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -36,6 +40,8 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
   const { storeId: paramStoreId } = useParams<{ storeId: string }>();
   const storeId = storeKey || paramStoreId;
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { setMerchantId, addItem, items, clearCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeName, setStoreName] = useState("ecoshopsham Store");
@@ -43,7 +49,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
   const [suspended, setSuspended] = useState(false);
   const [trialExpired, setTrialExpired] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [resolvedMerchantId, setResolvedMerchantId] = useState<string>("");
   const [publicStoreKey, setPublicStoreKey] = useState<string>("");
   const [theme, setTheme] = useState<StoreTheme>({
@@ -147,6 +153,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
       }
 
       setResolvedMerchantId(merchantId);
+      setMerchantId(merchantId);
 
       const [{ data, error }, { data: settings }] = await Promise.all([
         supabase
@@ -172,26 +179,41 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
     };
 
     if (storeId) fetchStore();
-  }, [storeId]);
+  }, [storeId, setMerchantId]);
+
+  const handleCheckout = () => {
+    if (!items.length) {
+      toast({ title: "السلة فارغة", variant: "destructive" });
+      return;
+    }
+    setCheckoutOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background" style={themeToCssVars(theme)}>
-      <header className="sticky top-0 z-40 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-4 text-center shadow-sm">
-        <div className="flex items-center justify-center gap-2">
-          {theme.logo_url ? (
-            <img
-              src={theme.logo_url}
-              alt={storeName}
-              className="h-10 w-10 rounded-full object-cover border-2 border-primary-foreground/30 shadow-sm"
-            />
-          ) : (
-            <Store className="h-5 w-5 opacity-90" />
+      <header className="sticky top-0 z-40 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-3 shadow-sm">
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <div className="flex-1 text-center min-w-0">
+            <div className="flex items-center justify-center gap-2">
+              {theme.logo_url ? (
+                <img
+                  src={theme.logo_url}
+                  alt={storeName}
+                  className="h-9 w-9 rounded-full object-cover border-2 border-primary-foreground/30 shadow-sm"
+                />
+              ) : (
+                <Store className="h-5 w-5 opacity-90" />
+              )}
+              <h1 className="text-lg font-display font-bold tracking-tight truncate">{storeName}</h1>
+            </div>
+            <p className="text-xs text-primary-foreground/80 mt-0.5 truncate">
+              {theme.tagline || "تصفّح المنتجات واطلب مباشرة"}
+            </p>
+          </div>
+          {!loading && !notFound && !suspended && !trialExpired && (
+            <StoreCartButton currency={theme.currency} onCheckout={handleCheckout} />
           )}
-          <h1 className="text-lg font-display font-bold tracking-tight">{storeName}</h1>
         </div>
-        <p className="text-xs text-primary-foreground/80 mt-1">
-          {theme.tagline || "تصفّح المنتجات واطلب مباشرة"}
-        </p>
       </header>
 
       {!loading && !notFound && !suspended && !trialExpired && (
@@ -202,8 +224,13 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
           {(theme.hero_mode === "products" || theme.hero_mode === "both") && products.length > 0 && (
             <ProductBannerSlider
               products={pickSliderProducts(products, theme)}
+              currency={theme.currency}
               onOpenProduct={(p) => navigate(`/p/${productSlug(p.id, p.name)}`)}
-              onOrder={(p) => setSelectedProduct(p)}
+              onOrder={(p) => {
+                const r = addItem(p, 1);
+                if (!r.ok) toast({ title: r.message || "تعذّر الإضافة", variant: "destructive" });
+                else toast({ title: "تمت الإضافة إلى السلة ✅" });
+              }}
             />
           )}
         </>
@@ -270,16 +297,9 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
                       <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{product.description}</p>
                     )}
                     <span className="font-display font-bold text-sm text-secondary mt-auto">
-                      {Number(product.price).toLocaleString()} ل.س
+                      {formatStorePrice(Number(product.price), theme.currency)}
                     </span>
-                    <Button
-                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 text-xs font-semibold"
-                      size="sm"
-                      onClick={() => setSelectedProduct(product)}
-                      disabled={outOfStock}
-                    >
-                      {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
-                    </Button>
+                    <AddToCartControls product={product} compact />
                   </div>
                 </Card>
               );
@@ -299,15 +319,17 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
         <WhatsAppChatButton whatsapp={whatsapp} storeName={storeName} />
       )}
 
-      {selectedProduct && resolvedMerchantId && (
+      {resolvedMerchantId && (
         <OrderFormModal
-          open={!!selectedProduct}
-          onOpenChange={(v) => { if (!v) setSelectedProduct(null); }}
-          product={selectedProduct}
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          items={items}
           merchantId={resolvedMerchantId}
           whatsapp={whatsapp}
           storeName={storeName}
           logoUrl={theme.logo_url}
+          currency={theme.currency}
+          onOrderComplete={clearCart}
         />
       )}
     </div>

@@ -208,7 +208,7 @@ const StoreThemeSettings = () => {
   };
 
   const handleReset = () => {
-    setTheme({ ...DEFAULT_STORE_THEME, footer: theme.footer });
+    setTheme({ ...DEFAULT_STORE_THEME, footer: theme.footer, currency: theme.currency });
   };
 
   if (loading) {

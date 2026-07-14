@@ -112,6 +112,8 @@ const AppRoutes = () => {
   );
 };
 
+import { CartProvider } from "@/contexts/CartContext";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -119,7 +121,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppRoutes />
+          <CartProvider>
+            <AppRoutes />
+          </CartProvider>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

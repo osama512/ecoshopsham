@@ -22,6 +22,7 @@ import {
 import CheckoutSettings from "@/components/CheckoutSettings";
 import StoreThemeSettings from "@/components/StoreThemeSettings";
 import StoreFooterSettings from "@/components/StoreFooterSettings";
+import StoreCurrencySettings from "@/components/StoreCurrencySettings";
 import {
   isApexDomain,
   isValidCustomDomain,
@@ -396,6 +397,8 @@ const DashboardSettings = () => {
       </Card>
 
       <StoreThemeSettings />
+
+      <StoreCurrencySettings />
 
       <StoreFooterSettings />
 

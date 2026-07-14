@@ -1,5 +1,11 @@
 import type { CSSProperties } from "react";
+import {
+  DEFAULT_STORE_CURRENCY,
+  parseStoreCurrency,
+  type StoreCurrency,
+} from "@/lib/currency";
 
+export type { StoreCurrency };
 export type StoreHeroMode = "none" | "images" | "products" | "both";
 
 export type StoreSocialPlatform =
@@ -46,6 +52,7 @@ export type StoreTheme = {
   /** Explicit product IDs for the hero slider (order preserved). Empty = latest products. */
   product_slider_ids: string[];
   footer: StoreFooter;
+  currency: StoreCurrency;
 };
 
 export const DEFAULT_STORE_FOOTER: StoreFooter = {
@@ -65,6 +72,7 @@ export const DEFAULT_STORE_THEME: StoreTheme = {
   product_slider_count: 8,
   product_slider_ids: [],
   footer: { ...DEFAULT_STORE_FOOTER },
+  currency: { ...DEFAULT_STORE_CURRENCY },
 };
 
 export const STORE_FONTS = [
@@ -242,6 +250,7 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
     product_slider_count,
     product_slider_ids,
     footer: parseStoreFooter(t.footer),
+    currency: parseStoreCurrency(t.currency),
   };
 }
 

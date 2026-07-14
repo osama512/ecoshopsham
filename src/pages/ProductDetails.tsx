@@ -9,6 +9,8 @@ import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import WhatsAppChatButton from "@/components/WhatsAppChatButton";
 import StorefrontFooter from "@/components/StorefrontFooter";
+import AddToCartControls from "@/components/AddToCartControls";
+import { StoreCartButton } from "@/components/StoreCart";
 import { extractIdFromSlug } from "@/lib/slug";
 import { isCustomDomainHost, storefrontPathForMerchant } from "@/lib/customDomain";
 import {
@@ -18,7 +20,10 @@ import {
   themeToCssVars,
   type StoreTheme,
 } from "@/lib/storeTheme";
+import { formatStorePrice } from "@/lib/currency";
 import { useStoreBrandingMeta } from "@/hooks/useStoreBrandingMeta";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -27,6 +32,8 @@ const ProductDetails = () => {
   const { slug, id: legacyId } = useParams<{ slug?: string; id?: string }>();
   const productId = slug ? extractIdFromSlug(slug) : legacyId;
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { setMerchantId: setCartMerchant, items, clearCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [storeName, setStoreName] = useState("ecoshopsham Store");
@@ -36,7 +43,7 @@ const ProductDetails = () => {
   const [customDomain, setCustomDomain] = useState<string | null>(null);
   const [domainStatus, setDomainStatus] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
-  const [showOrder, setShowOrder] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
 
   useStoreBrandingMeta(
@@ -75,6 +82,7 @@ const ProductDetails = () => {
       const p = prod as Product;
       setProduct(p);
       setMerchantId(p.merchant_id || "");
+      if (p.merchant_id) setCartMerchant(p.merchant_id);
 
       if (p.merchant_id) {
         const [{ data: profile }, { data: settings }] = await Promise.all([
@@ -169,7 +177,6 @@ const ProductDetails = () => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl" style={themeToCssVars(theme)}>
-      {/* Header — not sticky so it never covers the product card */}
       <header className="relative z-10 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-3 shadow-sm">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Button
@@ -181,14 +188,26 @@ const ProductDetails = () => {
             <ArrowRight className="h-4 w-4" />
             العودة للمتجر
           </Button>
-          <div className="mr-auto flex items-center gap-1.5">
+          <div className="mr-auto flex items-center gap-1.5 min-w-0">
             {theme.logo_url ? (
               <img src={theme.logo_url} alt={storeName} className="h-6 w-6 rounded-full object-cover border border-primary-foreground/30" />
             ) : (
               <Store className="h-4 w-4 opacity-90" />
             )}
-            <span className="text-sm font-display font-semibold">{storeName}</span>
+            <span className="text-sm font-display font-semibold truncate">{storeName}</span>
           </div>
+          {!unavailable && (
+            <StoreCartButton
+              currency={theme.currency}
+              onCheckout={() => {
+                if (!items.length) {
+                  toast({ title: "السلة فارغة", variant: "destructive" });
+                  return;
+                }
+                setCheckoutOpen(true);
+              }}
+            />
+          )}
         </div>
       </header>
 
@@ -211,7 +230,7 @@ const ProductDetails = () => {
                 )}
               </div>
               <p className="font-display font-bold text-lg text-secondary">
-                {Number(product.price).toLocaleString()} ل.س
+                {formatStorePrice(Number(product.price), theme.currency)}
               </p>
             </div>
 
@@ -222,19 +241,7 @@ const ProductDetails = () => {
               </div>
             )}
 
-            {!outOfStock && (product.stock_quantity ?? 0) > 0 && (
-              <p className="text-xs text-muted-foreground">
-                المتوفر: {product.stock_quantity} قطعة
-              </p>
-            )}
-
-            <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold py-5"
-              onClick={() => setShowOrder(true)}
-              disabled={outOfStock}
-            >
-              {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
-            </Button>
+            <AddToCartControls product={product} />
           </div>
         </div>
       </main>
@@ -254,15 +261,17 @@ const ProductDetails = () => {
         <WhatsAppChatButton whatsapp={whatsapp} storeName={storeName} />
       )}
 
-      {showOrder && merchantId && (
+      {merchantId && (
         <OrderFormModal
-          open={showOrder}
-          onOpenChange={setShowOrder}
-          product={product}
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          items={items}
           merchantId={merchantId}
           whatsapp={whatsapp}
           storeName={storeName}
           logoUrl={theme.logo_url}
+          currency={theme.currency}
+          onOrderComplete={clearCart}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { Product } from "@/integrations/supabase/db-types";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import { formatStorePrice, type StoreCurrency } from "@/lib/currency";
 import {
   Carousel,
   CarouselContent,
@@ -14,11 +15,12 @@ import {
 
 interface ProductBannerSliderProps {
   products: Product[];
+  currency: StoreCurrency;
   onOpenProduct: (product: Product) => void;
   onOrder: (product: Product) => void;
 }
 
-const ProductBannerSlider = ({ products, onOpenProduct, onOrder }: ProductBannerSliderProps) => {
+const ProductBannerSlider = ({ products, currency, onOpenProduct, onOrder }: ProductBannerSliderProps) => {
   const [api, setApi] = useState<CarouselApi>();
 
   if (!products.length) return null;
@@ -67,7 +69,7 @@ const ProductBannerSlider = ({ products, onOpenProduct, onOrder }: ProductBanner
                         </p>
                       )}
                       <span className="font-display font-bold text-sm text-secondary mt-auto">
-                        {Number(product.price).toLocaleString()} ل.س
+                        {formatStorePrice(Number(product.price), currency)}
                       </span>
                       <Button
                         className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 text-xs font-semibold"
@@ -75,7 +77,7 @@ const ProductBannerSlider = ({ products, onOpenProduct, onOrder }: ProductBanner
                         onClick={() => onOrder(product)}
                         disabled={outOfStock}
                       >
-                        {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
+                        {outOfStock ? "نفذت الكمية" : "أضف إلى السلة"}
                       </Button>
                     </div>
                   </Card>
