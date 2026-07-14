@@ -7,9 +7,16 @@ interface ProductImageCarouselProps {
   imageUrl: string | null;
   alt: string;
   className?: string;
+  objectFit?: "cover" | "contain";
 }
 
-const ProductImageCarousel = ({ images, imageUrl, alt, className = "" }: ProductImageCarouselProps) => {
+const ProductImageCarousel = ({
+  images,
+  imageUrl,
+  alt,
+  className = "",
+  objectFit = "cover",
+}: ProductImageCarouselProps) => {
   const allImages = images.length > 0 ? images : imageUrl ? [imageUrl] : [];
   const [current, setCurrent] = useState(0);
 
@@ -26,7 +33,7 @@ const ProductImageCarousel = ({ images, imageUrl, alt, className = "" }: Product
       <img
         src={allImages[current]}
         alt={`${alt} ${current + 1}`}
-        className="w-full h-full object-cover"
+        className={`w-full h-full ${objectFit === "contain" ? "object-contain" : "object-cover"}`}
         loading="lazy"
       />
       {allImages.length > 1 && (

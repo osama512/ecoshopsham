@@ -11,6 +11,7 @@ import ProductImageCarousel from "@/components/ProductImageCarousel";
 import StorefrontBanner from "@/components/StorefrontBanner";
 import ProductBannerSlider from "@/components/ProductBannerSlider";
 import WhatsAppChatButton from "@/components/WhatsAppChatButton";
+import StorefrontFooter from "@/components/StorefrontFooter";
 import { productSlug } from "@/lib/slug";
 import {
   DEFAULT_STORE_THEME,
@@ -21,6 +22,7 @@ import {
   type StoreTheme,
 } from "@/lib/storeTheme";
 import { useStoreBrandingMeta } from "@/hooks/useStoreBrandingMeta";
+import { isCustomDomainHost } from "@/lib/customDomain";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -43,7 +45,11 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
   const [notFound, setNotFound] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [resolvedMerchantId, setResolvedMerchantId] = useState<string>("");
-  const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
+  const [publicStoreKey, setPublicStoreKey] = useState<string>("");
+  const [theme, setTheme] = useState<StoreTheme>({
+    ...DEFAULT_STORE_THEME,
+    footer: { about: null, socials: [], pages: [] },
+  });
 
   useStoreBrandingMeta(
     !loading && !notFound ? storeName : null,
@@ -117,6 +123,11 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
         const p = profile as any;
         setStoreName(p.store_name || "ecoshopsham Store");
         setWhatsapp(p.whatsapp_number || DEFAULT_WHATSAPP);
+        setPublicStoreKey(
+          isCustomDomainHost()
+            ? window.location.hostname.toLowerCase()
+            : p.store_slug || storeId || merchantId,
+        );
 
         if (p.status === "suspended") {
           setSuspended(true);
@@ -277,9 +288,12 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
         )}
       </main>
 
-      <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-8">
-        مدعوم من ecoshop<span className="text-secondary font-semibold">sham</span>
-      </footer>
+      <StorefrontFooter
+        storeName={storeName}
+        storeKey={publicStoreKey || storeId || resolvedMerchantId}
+        footer={theme.footer}
+        logoUrl={theme.logo_url}
+      />
 
       {!loading && !notFound && !suspended && !trialExpired && whatsapp && (
         <WhatsAppChatButton whatsapp={whatsapp} storeName={storeName} />

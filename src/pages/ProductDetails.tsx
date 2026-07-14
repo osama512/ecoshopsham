@@ -8,6 +8,7 @@ import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import WhatsAppChatButton from "@/components/WhatsAppChatButton";
+import StorefrontFooter from "@/components/StorefrontFooter";
 import { extractIdFromSlug } from "@/lib/slug";
 import { isCustomDomainHost, storefrontPathForMerchant } from "@/lib/customDomain";
 import {
@@ -168,9 +169,9 @@ const ProductDetails = () => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl" style={themeToCssVars(theme)}>
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-3 shadow-sm">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
+      {/* Header — not sticky so it never covers the product card */}
+      <header className="relative z-10 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-3 shadow-sm">
+        <div className="max-w-md mx-auto flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -191,58 +192,63 @@ const ProductDetails = () => {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto">
-        {/* Image */}
-        <ProductImageCarousel
-          images={product.images || []}
-          imageUrl={product.image_url}
-          alt={product.name}
-          className="w-full aspect-square sm:aspect-[4/3]"
-        />
+      <main className="max-w-md mx-auto px-4 py-4">
+        <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+          <ProductImageCarousel
+            images={product.images || []}
+            imageUrl={product.image_url}
+            alt={product.name}
+            className="w-full h-52 sm:h-64"
+            objectFit="contain"
+          />
 
-        {/* Details */}
-        <div className="p-5 space-y-5">
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <h1 className="text-xl font-display font-bold leading-tight flex-1">{product.name}</h1>
-              {outOfStock && (
-                <Badge variant="destructive" className="shrink-0 text-xs">نفذت الكمية</Badge>
-              )}
-            </div>
-            <p className="font-display font-bold text-xl text-secondary">
-              {Number(product.price).toLocaleString()} ل.س
-            </p>
-          </div>
-
-          {/* Description */}
-          {product.description && (
+          <div className="p-4 space-y-4">
             <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-muted-foreground">وصف المنتج</h2>
-              <p className="text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
+              <div className="flex items-start gap-2">
+                <h1 className="text-lg font-display font-bold leading-tight flex-1">{product.name}</h1>
+                {outOfStock && (
+                  <Badge variant="destructive" className="shrink-0 text-xs">نفذت الكمية</Badge>
+                )}
+              </div>
+              <p className="font-display font-bold text-lg text-secondary">
+                {Number(product.price).toLocaleString()} ل.س
+              </p>
             </div>
-          )}
 
-          {/* Stock info */}
-          {!outOfStock && (product.stock_quantity ?? 0) > 0 && (
-            <p className="text-xs text-muted-foreground">
-              المتوفر: {product.stock_quantity} قطعة
-            </p>
-          )}
+            {product.description && (
+              <div className="space-y-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">وصف المنتج</h2>
+                <p className="text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
+              </div>
+            )}
 
-          {/* CTA */}
-          <Button
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold text-base py-6"
-            onClick={() => setShowOrder(true)}
-            disabled={outOfStock}
-          >
-            {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
-          </Button>
+            {!outOfStock && (product.stock_quantity ?? 0) > 0 && (
+              <p className="text-xs text-muted-foreground">
+                المتوفر: {product.stock_quantity} قطعة
+              </p>
+            )}
+
+            <Button
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold py-5"
+              onClick={() => setShowOrder(true)}
+              disabled={outOfStock}
+            >
+              {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
+            </Button>
+          </div>
         </div>
       </main>
 
-      <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-4">
-        مدعوم من ecoshop<span className="text-secondary font-semibold">sham</span>
-      </footer>
+      <StorefrontFooter
+        storeName={storeName}
+        storeKey={
+          isCustomDomainHost()
+            ? window.location.hostname.toLowerCase()
+            : storeSlug || merchantId
+        }
+        footer={theme.footer}
+        logoUrl={theme.logo_url}
+      />
 
       {!unavailable && whatsapp && (
         <WhatsAppChatButton whatsapp={whatsapp} storeName={storeName} />

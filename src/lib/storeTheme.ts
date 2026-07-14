@@ -2,6 +2,36 @@ import type { CSSProperties } from "react";
 
 export type StoreHeroMode = "none" | "images" | "products" | "both";
 
+export type StoreSocialPlatform =
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "telegram"
+  | "x"
+  | "whatsapp"
+  | "other";
+
+export type StoreSocialLink = {
+  id: string;
+  platform: StoreSocialPlatform;
+  url: string;
+  label: string;
+};
+
+export type StoreFooterPage = {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+};
+
+export type StoreFooter = {
+  about: string | null;
+  socials: StoreSocialLink[];
+  pages: StoreFooterPage[];
+};
+
 export type StoreTheme = {
   primary: string;
   accent: string;
@@ -15,6 +45,13 @@ export type StoreTheme = {
   product_slider_count: number;
   /** Explicit product IDs for the hero slider (order preserved). Empty = latest products. */
   product_slider_ids: string[];
+  footer: StoreFooter;
+};
+
+export const DEFAULT_STORE_FOOTER: StoreFooter = {
+  about: null,
+  socials: [],
+  pages: [],
 };
 
 export const DEFAULT_STORE_THEME: StoreTheme = {
@@ -27,6 +64,7 @@ export const DEFAULT_STORE_THEME: StoreTheme = {
   hero_mode: "products",
   product_slider_count: 8,
   product_slider_ids: [],
+  footer: { ...DEFAULT_STORE_FOOTER },
 };
 
 export const STORE_FONTS = [
@@ -37,14 +75,129 @@ export const STORE_FONTS = [
   { id: "Inter", label: "Inter", google: "Inter:wght@400;500;600;700" },
 ] as const;
 
+export const STORE_SOCIAL_PLATFORMS: { id: StoreSocialPlatform; label: string }[] = [
+  { id: "facebook", label: "Facebook" },
+  { id: "instagram", label: "Instagram" },
+  { id: "tiktok", label: "TikTok" },
+  { id: "youtube", label: "YouTube" },
+  { id: "telegram", label: "Telegram" },
+  { id: "x", label: "X (Twitter)" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "other", label: "رابط آخر" },
+];
+
 export const MAX_STORE_BANNERS = 5;
 export const MIN_PRODUCT_SLIDER = 2;
 export const MAX_PRODUCT_SLIDER = 20;
+export const MAX_FOOTER_SOCIALS = 8;
+export const MAX_FOOTER_PAGES = 10;
 
 const HERO_MODES: StoreHeroMode[] = ["none", "images", "products", "both"];
+const SOCIAL_IDS = new Set(STORE_SOCIAL_PLATFORMS.map((p) => p.id));
+
+function newId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function makeFooterPageSlug(title: string, existing: string[]): string {
+  const base =
+    title
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\u0600-\u06FF-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || `page-${Date.now().toString(36)}`;
+  let slug = base.slice(0, 48);
+  let n = 2;
+  while (existing.includes(slug)) {
+    slug = `${base.slice(0, 40)}-${n}`;
+    n += 1;
+  }
+  return slug;
+}
+
+export function createFooterPage(title: string, content = "", existingSlugs: string[] = []): StoreFooterPage {
+  return {
+    id: newId(),
+    slug: makeFooterPageSlug(title, existingSlugs),
+    title: title.trim() || "صفحة جديدة",
+    content,
+  };
+}
+
+export function createSocialLink(
+  platform: StoreSocialPlatform = "instagram",
+  url = "",
+): StoreSocialLink {
+  return {
+    id: newId(),
+    platform,
+    url,
+    label: STORE_SOCIAL_PLATFORMS.find((p) => p.id === platform)?.label || platform,
+  };
+}
+
+export function parseStoreFooter(raw: unknown): StoreFooter {
+  if (!raw || typeof raw !== "object") return { about: null, socials: [], pages: [] };
+  const f = raw as Record<string, unknown>;
+  const socials: StoreSocialLink[] = Array.isArray(f.socials)
+    ? f.socials
+        .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+        .map((s) => {
+          const platform = (
+            typeof s.platform === "string" && SOCIAL_IDS.has(s.platform as StoreSocialPlatform)
+              ? s.platform
+              : "other"
+          ) as StoreSocialPlatform;
+          return {
+            id: typeof s.id === "string" && s.id ? s.id : newId(),
+            platform,
+            url: typeof s.url === "string" ? s.url.trim() : "",
+            label:
+              typeof s.label === "string" && s.label.trim()
+                ? s.label.trim()
+                : STORE_SOCIAL_PLATFORMS.find((p) => p.id === platform)?.label || "رابط",
+          };
+        })
+        .filter((s) => !!s.url)
+        .slice(0, MAX_FOOTER_SOCIALS)
+    : [];
+
+  const pages: StoreFooterPage[] = Array.isArray(f.pages)
+    ? f.pages
+        .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+        .map((p) => {
+          const title = typeof p.title === "string" && p.title.trim() ? p.title.trim() : "صفحة";
+          const slug =
+            typeof p.slug === "string" && p.slug.trim()
+              ? p.slug.trim()
+              : makeFooterPageSlug(title, []);
+          return {
+            id: typeof p.id === "string" && p.id ? p.id : newId(),
+            slug,
+            title,
+            content: typeof p.content === "string" ? p.content : "",
+          };
+        })
+        .slice(0, MAX_FOOTER_PAGES)
+    : [];
+
+  return {
+    about: typeof f.about === "string" && f.about.trim() ? f.about.trim() : null,
+    socials,
+    pages,
+  };
+}
+
+export function hasStoreFooterContent(footer: StoreFooter): boolean {
+  return !!(footer.about || footer.socials.length > 0 || footer.pages.length > 0);
+}
 
 export function parseStoreTheme(raw: unknown): StoreTheme {
-  if (!raw || typeof raw !== "object") return { ...DEFAULT_STORE_THEME };
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_STORE_THEME, footer: { ...DEFAULT_STORE_FOOTER } };
   const t = raw as Record<string, unknown>;
 
   let product_slider_count = DEFAULT_STORE_THEME.product_slider_count;
@@ -59,7 +212,6 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
   if (typeof t.hero_mode === "string" && HERO_MODES.includes(t.hero_mode as StoreHeroMode)) {
     hero_mode = t.hero_mode as StoreHeroMode;
   } else if (Array.isArray(t.banners) && t.banners.length > 0) {
-    // Older themes that only had image banners
     hero_mode = "images";
   }
 
@@ -89,6 +241,7 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
     hero_mode,
     product_slider_count,
     product_slider_ids,
+    footer: parseStoreFooter(t.footer),
   };
 }
 

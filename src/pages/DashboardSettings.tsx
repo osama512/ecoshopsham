@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import CheckoutSettings from "@/components/CheckoutSettings";
 import StoreThemeSettings from "@/components/StoreThemeSettings";
+import StoreFooterSettings from "@/components/StoreFooterSettings";
 import {
   isApexDomain,
   isValidCustomDomain,
@@ -395,6 +396,8 @@ const DashboardSettings = () => {
       </Card>
 
       <StoreThemeSettings />
+
+      <StoreFooterSettings />
 
       <Separator />
 

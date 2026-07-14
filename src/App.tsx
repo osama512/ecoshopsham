@@ -23,6 +23,7 @@ import AdminPlans from "./pages/AdminPlans";
 
 import Storefront from "./pages/Storefront";
 import ProductDetails from "./pages/ProductDetails";
+import StoreInfoPage from "./pages/StoreInfoPage";
 import NotFound from "./pages/NotFound";
 import { isCustomDomainHost } from "@/lib/customDomain";
 
@@ -61,7 +62,9 @@ const AppRoutes = () => {
         <Route path="/" element={<CustomDomainHome />} />
         <Route path="/p/:slug" element={<ProductDetails />} />
         <Route path="/product/:id" element={<ProductDetails />} />
+        <Route path="/info/:pageSlug" element={<StoreInfoPage />} />
         <Route path="/s/:storeId" element={<Storefront />} />
+        <Route path="/s/:storeId/info/:pageSlug" element={<StoreInfoPage />} />
         <Route path="*" element={<CustomDomainHome />} />
       </Routes>
     );
@@ -73,6 +76,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/s/:storeId" element={<Storefront />} />
+      <Route path="/s/:storeId/info/:pageSlug" element={<StoreInfoPage />} />
       <Route path="/p/:slug" element={<ProductDetails />} />
       <Route path="/product/:id" element={<ProductDetails />} />
       <Route
