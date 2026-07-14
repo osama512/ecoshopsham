@@ -19,6 +19,11 @@ export function formatSyrianWhatsApp(phone: string): string {
   return cleaned;
 }
 
+/** Deterministic auth email used for phone-only signup/login (must stay in sync). */
+export function phoneToAuthEmail(phone: string): string {
+  return `${formatSyrianWhatsApp(phone)}@syriabiz.local`;
+}
+
 /**
  * Validates a phone number.
  * Accepts:

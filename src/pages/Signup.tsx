@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, Eye, EyeOff } from "lucide-react";
-import { isValidPhone, formatSyrianWhatsApp } from "@/lib/phone";
+import { isValidPhone, phoneToAuthEmail } from "@/lib/phone";
 
 const Signup = () => {
   const [tab, setTab] = useState<"phone" | "email">("phone");
@@ -32,7 +32,7 @@ const Signup = () => {
     }
 
     // Supabase requires email — deterministic placeholder for phone-only signups
-    const signupEmail = tab === "email" ? email : `${formatSyrianWhatsApp(phone)}@syriabiz.local`;
+    const signupEmail = tab === "email" ? email.trim() : phoneToAuthEmail(phone);
 
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
@@ -56,20 +56,57 @@ const Signup = () => {
       return;
     }
 
+    // Supabase may return a user with empty identities when the email already exists
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      toast({
+        title: "الحساب موجود مسبقاً",
+        description: "جرّب تسجيل الدخول بنفس البيانات",
+        variant: "destructive",
+      });
+      setLoading(false);
+      navigate("/login");
+      return;
+    }
+
     if (data.user) {
       await (supabase.from("profiles" as any) as any).upsert({
         id: data.user.id,
         role: "merchant",
         status: "active",
         plan_type: "free",
-        email: tab === "email" ? email : null,
+        email: tab === "email" ? email.trim() : null,
         phone: tab === "phone" ? phone : null,
         updated_at: new Date().toISOString(),
       } as any);
     }
 
-    toast({ title: "تم إنشاء الحساب بنجاح! ✅" });
-    navigate("/login");
+    if (data.session) {
+      toast({ title: "تم إنشاء الحساب بنجاح! ✅" });
+      navigate("/dashboard", { replace: true });
+    } else if (tab === "email") {
+      toast({
+        title: "تحقق من بريدك",
+        description: "أرسلنا رابط تأكيد. بعد التفعيل سجّل الدخول.",
+      });
+      navigate("/login");
+    } else {
+      // Phone account created but Auth still requires confirmation (no session)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: signupEmail,
+        password,
+      });
+      if (signInError) {
+        toast({
+          title: "تم إنشاء الحساب لكن تفعيله مطلوب",
+          description: "فعّل الحساب من Authentication في Supabase أو نفّذ سكربت التأكيد التلقائي، ثم سجّل الدخول.",
+          variant: "destructive",
+        });
+        navigate("/login");
+      } else {
+        toast({ title: "تم إنشاء الحساب بنجاح! ✅" });
+        navigate("/dashboard", { replace: true });
+      }
+    }
     setLoading(false);
   };
 

@@ -9,6 +9,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, LogIn, Eye, EyeOff } from "lucide-react";
+import { phoneToAuthEmail } from "@/lib/phone";
+
+function authErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("email not confirmed") || m.includes("not confirmed")) {
+    return "الحساب غير مفعّل بعد. إن سجّلت برقم الهاتف، نفّذ تفعيل الحسابات من لوحة Supabase أو تواصل مع الدعم.";
+  }
+  if (m.includes("invalid login credentials") || m.includes("invalid credentials")) {
+    return "رقم الهاتف/البريد أو كلمة المرور غير صحيحة.";
+  }
+  return message;
+}
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -30,26 +42,31 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    let loginEmail = email;
+    let loginEmail = email.trim();
 
-    // If logging in with phone, build the same deterministic email used at signup
+    // Same deterministic email used at phone signup
     if (!loginEmail && phone) {
-      const cleaned = phone.replace(/[\s\-\+\(\)]/g, "").replace(/[^0-9]/g, "");
-      // Convert Syrian local 09xx → 9639xx
-      let normalized = cleaned;
-      if (normalized.startsWith("09")) {
-        normalized = "963" + normalized.slice(1);
-      }
-      if (normalized.startsWith("00")) {
-        normalized = normalized.slice(2);
-      }
-      loginEmail = `${normalized}@syriabiz.local`;
+      loginEmail = phoneToAuthEmail(phone);
+    }
+
+    if (!loginEmail) {
+      toast({
+        title: "بيانات ناقصة",
+        description: "أدخل رقم الهاتف أو البريد الإلكتروني",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
 
     if (error) {
-      toast({ title: "فشل تسجيل الدخول", description: error.message, variant: "destructive" });
+      toast({
+        title: "فشل تسجيل الدخول",
+        description: authErrorMessage(error.message),
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
