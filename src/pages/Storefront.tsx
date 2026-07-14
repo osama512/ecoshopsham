@@ -17,6 +17,7 @@ import {
   themeToCssVars,
   type StoreTheme,
 } from "@/lib/storeTheme";
+import { useStoreBrandingMeta } from "@/hooks/useStoreBrandingMeta";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -40,6 +41,11 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [resolvedMerchantId, setResolvedMerchantId] = useState<string>("");
   const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
+
+  useStoreBrandingMeta(
+    !loading && !notFound ? storeName : null,
+    !loading && !notFound ? theme.logo_url : null,
+  );
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -162,7 +168,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
             <img
               src={theme.logo_url}
               alt={storeName}
-              className="h-8 w-8 rounded-full object-cover border"
+              className="h-10 w-10 rounded-full object-cover border shadow-sm"
             />
           ) : (
             <Store className="h-5 w-5 text-secondary" />
@@ -269,6 +275,8 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
           product={selectedProduct}
           merchantId={resolvedMerchantId}
           whatsapp={whatsapp}
+          storeName={storeName}
+          logoUrl={theme.logo_url}
         />
       )}
     </div>

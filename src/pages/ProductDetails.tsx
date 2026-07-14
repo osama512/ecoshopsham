@@ -16,6 +16,7 @@ import {
   themeToCssVars,
   type StoreTheme,
 } from "@/lib/storeTheme";
+import { useStoreBrandingMeta } from "@/hooks/useStoreBrandingMeta";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -35,6 +36,11 @@ const ProductDetails = () => {
   const [unavailable, setUnavailable] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
   const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
+
+  useStoreBrandingMeta(
+    !loading && product && !unavailable ? storeName : null,
+    !loading && product && !unavailable ? theme.logo_url : null,
+  );
 
   useEffect(() => {
     const fetch = async () => {
@@ -245,6 +251,8 @@ const ProductDetails = () => {
           product={product}
           merchantId={merchantId}
           whatsapp={whatsapp}
+          storeName={storeName}
+          logoUrl={theme.logo_url}
         />
       )}
     </div>

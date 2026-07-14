@@ -260,7 +260,10 @@ const StoreThemeSettings = () => {
 
       {/* Logo */}
       <div className="space-y-2">
-        <Label>شعار المتجر (اختياري)</Label>
+          <Label>شعار المتجر (اللوجو)</Label>
+          <p className="text-xs text-muted-foreground">
+            يظهر في رأس المتجر، وفي أيقونة تبويب المتصفح (Chrome)، ويُرفق رابطه في رسائل الطلب على واتساب.
+          </p>
         <div className="flex items-center gap-3 flex-wrap">
           {theme.logo_url ? (
             <div className="relative">

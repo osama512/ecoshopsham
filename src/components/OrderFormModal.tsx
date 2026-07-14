@@ -44,11 +44,21 @@ interface OrderFormModalProps {
   product: Product;
   merchantId: string;
   whatsapp: string;
+  storeName?: string;
+  logoUrl?: string | null;
 }
 
 type Step = "form" | "shamcash_pay" | "paid";
 
-const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: OrderFormModalProps) => {
+const OrderFormModal = ({
+  open,
+  onOpenChange,
+  product,
+  merchantId,
+  whatsapp,
+  storeName,
+  logoUrl,
+}: OrderFormModalProps) => {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("form");
   const [fullName, setFullName] = useState("");
@@ -189,8 +199,9 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
 
   const buildWhatsAppMessage = (extra?: string) => {
     const paymentLabel = payments.find((p) => p.value === paymentMethod)?.label ?? paymentMethod;
+    const shop = storeName?.trim() || "المتجر";
     let message =
-      `🛒 طلب جديد من ecoshopsham\n\n` +
+      `🛒 طلب جديد من متجر ${shop}\n\n` +
       `📦 المنتج: ${product.name}\n` +
       `💰 المجموع: ${productSubtotal.toLocaleString()} ل.س\n`;
 
@@ -214,6 +225,10 @@ const OrderFormModal = ({ open, onOpenChange, product, merchantId, whatsapp }: O
       `🏙️ المدينة: ${city}\n` +
       `📍 العنوان: ${address.trim()}\n` +
       `💳 الدفع: ${paymentLabel}`;
+
+    if (logoUrl?.trim()) {
+      message += `\n\n🖼️ شعار المتجر:\n${logoUrl.trim()}`;
+    }
 
     if (extra) message += `\n${extra}`;
     return message;
