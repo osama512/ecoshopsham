@@ -25,9 +25,12 @@ import {
 import {
   DEFAULT_STORE_THEME,
   MAX_STORE_BANNERS,
+  MAX_PRODUCT_SLIDER,
+  MIN_PRODUCT_SLIDER,
   STORE_FONTS,
   ensureStoreFont,
   parseStoreTheme,
+  type StoreHeroMode,
   type StoreTheme,
 } from "@/lib/storeTheme";
 
@@ -304,52 +307,115 @@ const StoreThemeSettings = () => {
         </div>
       </div>
 
-      {/* Banners */}
-      <div className="space-y-2">
-        <Label>بانر / سلايدر الواجهة</Label>
-        <p className="text-xs text-muted-foreground">
-          صورة واحدة تظهر كبانر، وأكثر من صورة تظهر كسلايدر. حتى {MAX_STORE_BANNERS} صور.
-        </p>
-        {theme.banners.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {theme.banners.map((url, i) => (
-              <div key={url} className="relative aspect-[2/1] rounded-md overflow-hidden border bg-muted">
-                <img src={url} alt={`بانر ${i + 1}`} className="w-full h-full object-cover" />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-1 left-1 h-6 w-6"
-                  onClick={() => removeBanner(i)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
+      {/* Hero: products slider + optional image banners */}
+      <div className="space-y-3">
+        <div>
+          <Label>بانر الواجهة / السلايدر</Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            يمكن عرض أحدث منتجاتك كسلايدر متجاوب (٤ على الشاشات العريضة، ثم ٣، ٢، ١ حسب الحجم).
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>نوع البانر</Label>
+          <Select
+            value={theme.hero_mode}
+            onValueChange={(v) => setTheme((t) => ({ ...t, hero_mode: v as StoreHeroMode }))}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="products">سلايدر المنتجات (موصى به)</SelectItem>
+              <SelectItem value="images">صور بانر فقط</SelectItem>
+              <SelectItem value="both">منتجات + صور بانر</SelectItem>
+              <SelectItem value="none">بدون بانر</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {(theme.hero_mode === "products" || theme.hero_mode === "both") && (
+          <div className="space-y-2">
+            <Label htmlFor="sliderCount">عدد المنتجات في السلايدر</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                id="sliderCount"
+                type="number"
+                min={MIN_PRODUCT_SLIDER}
+                max={MAX_PRODUCT_SLIDER}
+                value={theme.product_slider_count}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (!Number.isFinite(n)) return;
+                  setTheme((t) => ({
+                    ...t,
+                    product_slider_count: Math.min(
+                      MAX_PRODUCT_SLIDER,
+                      Math.max(MIN_PRODUCT_SLIDER, n),
+                    ),
+                  }));
+                }}
+                className="w-24"
+                dir="ltr"
+              />
+              <span className="text-xs text-muted-foreground">
+                من {MIN_PRODUCT_SLIDER} إلى {MAX_PRODUCT_SLIDER} (أحدث المنتجات الظاهرة)
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              العرض على الشاشة: عريض ٤ · متوسط ٣ · صغير ٢ · جوال ١ (تمرير تلقائي).
+            </p>
           </div>
         )}
-        {theme.banners.length < MAX_STORE_BANNERS && (
-          <>
-            <input
-              ref={bannerInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleBannerUpload}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={uploading}
-              onClick={() => bannerInputRef.current?.click()}
-            >
-              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-              إضافة صورة بانر
-            </Button>
-          </>
+
+        {(theme.hero_mode === "images" || theme.hero_mode === "both") && (
+          <div className="space-y-2">
+            <Label>صور بانر إضافية (اختياري)</Label>
+            <p className="text-xs text-muted-foreground">
+              صورة واحدة تظهر كبانر، وأكثر من صورة تظهر كسلايدر. حتى {MAX_STORE_BANNERS} صور.
+            </p>
+            {theme.banners.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {theme.banners.map((url, i) => (
+                  <div key={url} className="relative aspect-[2/1] rounded-md overflow-hidden border bg-muted">
+                    <img src={url} alt={`بانر ${i + 1}`} className="w-full h-full object-cover" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 left-1 h-6 w-6"
+                      onClick={() => removeBanner(i)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {theme.banners.length < MAX_STORE_BANNERS && (
+              <>
+                <input
+                  ref={bannerInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleBannerUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={uploading}
+                  onClick={() => bannerInputRef.current?.click()}
+                >
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  إضافة صورة بانر
+                </Button>
+              </>
+            )}
+          </div>
         )}
       </div>
 

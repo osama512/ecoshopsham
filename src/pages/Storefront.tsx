@@ -9,6 +9,7 @@ import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import StorefrontBanner from "@/components/StorefrontBanner";
+import ProductBannerSlider from "@/components/ProductBannerSlider";
 import { productSlug } from "@/lib/slug";
 import {
   DEFAULT_STORE_THEME,
@@ -180,11 +181,22 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
         </p>
       </header>
 
-      {!loading && !notFound && !suspended && !trialExpired && theme.banners.length > 0 && (
-        <StorefrontBanner banners={theme.banners} storeName={storeName} />
+      {!loading && !notFound && !suspended && !trialExpired && (
+        <>
+          {(theme.hero_mode === "images" || theme.hero_mode === "both") && theme.banners.length > 0 && (
+            <StorefrontBanner banners={theme.banners} storeName={storeName} />
+          )}
+          {(theme.hero_mode === "products" || theme.hero_mode === "both") && products.length > 0 && (
+            <ProductBannerSlider
+              products={products.slice(0, theme.product_slider_count)}
+              onOpenProduct={(p) => navigate(`/p/${productSlug(p.id, p.name)}`)}
+              onOrder={(p) => setSelectedProduct(p)}
+            />
+          )}
+        </>
       )}
 
-      <main className="px-4 py-4 max-w-2xl mx-auto">
+      <main className="px-4 py-4 max-w-6xl mx-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-secondary" />
@@ -215,7 +227,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
             <p className="text-sm mt-1">هذا المتجر لم يضف منتجات بعد</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {products.map((product) => {
               const outOfStock = (product.stock_quantity ?? 0) <= 0;
               return (

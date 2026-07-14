@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+export type StoreHeroMode = "none" | "images" | "products" | "both";
+
 export type StoreTheme = {
   primary: string;
   accent: string;
@@ -7,6 +9,10 @@ export type StoreTheme = {
   logo_url: string | null;
   banners: string[];
   tagline: string | null;
+  /** What appears as storefront hero: product slider, image banners, or both */
+  hero_mode: StoreHeroMode;
+  /** How many products feed the hero slider */
+  product_slider_count: number;
 };
 
 export const DEFAULT_STORE_THEME: StoreTheme = {
@@ -16,6 +22,8 @@ export const DEFAULT_STORE_THEME: StoreTheme = {
   logo_url: null,
   banners: [],
   tagline: null,
+  hero_mode: "products",
+  product_slider_count: 8,
 };
 
 export const STORE_FONTS = [
@@ -27,10 +35,31 @@ export const STORE_FONTS = [
 ] as const;
 
 export const MAX_STORE_BANNERS = 5;
+export const MIN_PRODUCT_SLIDER = 2;
+export const MAX_PRODUCT_SLIDER = 20;
+
+const HERO_MODES: StoreHeroMode[] = ["none", "images", "products", "both"];
 
 export function parseStoreTheme(raw: unknown): StoreTheme {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_STORE_THEME };
   const t = raw as Record<string, unknown>;
+
+  let product_slider_count = DEFAULT_STORE_THEME.product_slider_count;
+  if (typeof t.product_slider_count === "number" && Number.isFinite(t.product_slider_count)) {
+    product_slider_count = Math.min(
+      MAX_PRODUCT_SLIDER,
+      Math.max(MIN_PRODUCT_SLIDER, Math.round(t.product_slider_count)),
+    );
+  }
+
+  let hero_mode: StoreHeroMode = DEFAULT_STORE_THEME.hero_mode;
+  if (typeof t.hero_mode === "string" && HERO_MODES.includes(t.hero_mode as StoreHeroMode)) {
+    hero_mode = t.hero_mode as StoreHeroMode;
+  } else if (Array.isArray(t.banners) && t.banners.length > 0) {
+    // Older themes that only had image banners
+    hero_mode = "images";
+  }
+
   return {
     primary: typeof t.primary === "string" && /^#[0-9a-fA-F]{6}$/.test(t.primary)
       ? t.primary
@@ -46,6 +75,8 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
       ? t.banners.filter((u): u is string => typeof u === "string" && !!u).slice(0, MAX_STORE_BANNERS)
       : [],
     tagline: typeof t.tagline === "string" && t.tagline.trim() ? t.tagline.trim() : null,
+    hero_mode,
+    product_slider_count,
   };
 }
 
