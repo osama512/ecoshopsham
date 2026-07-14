@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowRight, MessageCircle, Loader2, Package, Ban, Clock, Store } from "lucide-react";
+import { ArrowRight, Loader2, Package, Ban, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import WhatsAppChatButton from "@/components/WhatsAppChatButton";
 import { extractIdFromSlug } from "@/lib/slug";
 import { isCustomDomainHost, storefrontPathForMerchant } from "@/lib/customDomain";
 import {
@@ -168,12 +169,12 @@ const ProductDetails = () => {
   return (
     <div className="min-h-screen bg-background" dir="rtl" style={themeToCssVars(theme)}>
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b px-4 py-3">
+      <header className="sticky top-0 z-40 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-3 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 text-xs"
+            className="gap-1.5 text-xs text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
             onClick={goToStore}
           >
             <ArrowRight className="h-4 w-4" />
@@ -181,9 +182,9 @@ const ProductDetails = () => {
           </Button>
           <div className="mr-auto flex items-center gap-1.5">
             {theme.logo_url ? (
-              <img src={theme.logo_url} alt={storeName} className="h-6 w-6 rounded-full object-cover border" />
+              <img src={theme.logo_url} alt={storeName} className="h-6 w-6 rounded-full object-cover border border-primary-foreground/30" />
             ) : (
-              <Store className="h-4 w-4 text-secondary" />
+              <Store className="h-4 w-4 opacity-90" />
             )}
             <span className="text-sm font-display font-semibold">{storeName}</span>
           </div>
@@ -230,12 +231,11 @@ const ProductDetails = () => {
 
           {/* CTA */}
           <Button
-            className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-2 font-semibold text-base py-6"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-semibold text-base py-6"
             onClick={() => setShowOrder(true)}
             disabled={outOfStock}
           >
-            <MessageCircle className="h-5 w-5" />
-            {outOfStock ? "نفذت الكمية" : "اطلب عبر واتساب"}
+            {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
           </Button>
         </div>
       </main>
@@ -243,6 +243,10 @@ const ProductDetails = () => {
       <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-4">
         مدعوم من ecoshop<span className="text-secondary font-semibold">sham</span>
       </footer>
+
+      {!unavailable && whatsapp && (
+        <WhatsAppChatButton whatsapp={whatsapp} storeName={storeName} />
+      )}
 
       {showOrder && merchantId && (
         <OrderFormModal

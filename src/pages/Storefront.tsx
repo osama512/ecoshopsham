@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Package, MessageCircle, Store, Loader2, Ban, Clock } from "lucide-react";
+import { Package, Store, Loader2, Ban, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +10,13 @@ import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import StorefrontBanner from "@/components/StorefrontBanner";
 import ProductBannerSlider from "@/components/ProductBannerSlider";
+import WhatsAppChatButton from "@/components/WhatsAppChatButton";
 import { productSlug } from "@/lib/slug";
 import {
   DEFAULT_STORE_THEME,
   ensureStoreFont,
   parseStoreTheme,
+  pickSliderProducts,
   themeToCssVars,
   type StoreTheme,
 } from "@/lib/storeTheme";
@@ -163,20 +165,20 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
 
   return (
     <div className="min-h-screen bg-background" style={themeToCssVars(theme)}>
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b px-4 py-4 text-center">
+      <header className="sticky top-0 z-40 bg-primary text-primary-foreground border-b border-primary/80 px-4 py-4 text-center shadow-sm">
         <div className="flex items-center justify-center gap-2">
           {theme.logo_url ? (
             <img
               src={theme.logo_url}
               alt={storeName}
-              className="h-10 w-10 rounded-full object-cover border shadow-sm"
+              className="h-10 w-10 rounded-full object-cover border-2 border-primary-foreground/30 shadow-sm"
             />
           ) : (
-            <Store className="h-5 w-5 text-secondary" />
+            <Store className="h-5 w-5 opacity-90" />
           )}
           <h1 className="text-lg font-display font-bold tracking-tight">{storeName}</h1>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-primary-foreground/80 mt-1">
           {theme.tagline || "تصفّح المنتجات واطلب مباشرة"}
         </p>
       </header>
@@ -188,7 +190,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
           )}
           {(theme.hero_mode === "products" || theme.hero_mode === "both") && products.length > 0 && (
             <ProductBannerSlider
-              products={products.slice(0, theme.product_slider_count)}
+              products={pickSliderProducts(products, theme)}
               onOpenProduct={(p) => navigate(`/p/${productSlug(p.id, p.name)}`)}
               onOrder={(p) => setSelectedProduct(p)}
             />
@@ -260,13 +262,12 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
                       {Number(product.price).toLocaleString()} ل.س
                     </span>
                     <Button
-                      className="w-full bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1.5 text-xs font-semibold"
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 text-xs font-semibold"
                       size="sm"
                       onClick={() => setSelectedProduct(product)}
                       disabled={outOfStock}
                     >
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      {outOfStock ? "نفذت الكمية" : "اطلب عبر واتساب"}
+                      {outOfStock ? "نفذت الكمية" : "اطلب الآن"}
                     </Button>
                   </div>
                 </Card>
@@ -279,6 +280,10 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
       <footer className="text-center py-6 text-xs text-muted-foreground border-t mt-8">
         مدعوم من ecoshop<span className="text-secondary font-semibold">sham</span>
       </footer>
+
+      {!loading && !notFound && !suspended && !trialExpired && whatsapp && (
+        <WhatsAppChatButton whatsapp={whatsapp} storeName={storeName} />
+      )}
 
       {selectedProduct && resolvedMerchantId && (
         <OrderFormModal

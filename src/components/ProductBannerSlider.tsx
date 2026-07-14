@@ -47,7 +47,7 @@ const ProductBannerSlider = ({ products, onOpenProduct, onOrder }: ProductBanner
   if (!products.length) return null;
 
   return (
-    <section className="w-full border-b bg-muted/20 py-3 sm:py-4">
+    <section className="w-full border-b border-border bg-muted/40 py-3 sm:py-4">
       <div className="max-w-6xl mx-auto px-3 sm:px-4 relative">
         <p className="text-xs text-muted-foreground mb-2 px-1">منتجات مميزة</p>
         <Carousel

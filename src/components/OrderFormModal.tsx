@@ -680,7 +680,7 @@ const OrderFormModal = ({
                 ) : (
                   <MessageCircle className="h-4 w-4" />
                 )}
-                {paymentMethod === "shamcash" ? "تأكيد والانتقال للدفع" : "تأكيد وإرسال عبر واتساب"}
+                {paymentMethod === "shamcash" ? "تأكيد والانتقال للدفع" : "تأكيد الطلب"}
               </Button>
             </div>
           </>

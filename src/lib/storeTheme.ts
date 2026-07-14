@@ -11,8 +11,10 @@ export type StoreTheme = {
   tagline: string | null;
   /** What appears as storefront hero: product slider, image banners, or both */
   hero_mode: StoreHeroMode;
-  /** How many products feed the hero slider */
+  /** Fallback count when no products are explicitly selected */
   product_slider_count: number;
+  /** Explicit product IDs for the hero slider (order preserved). Empty = latest products. */
+  product_slider_ids: string[];
 };
 
 export const DEFAULT_STORE_THEME: StoreTheme = {
@@ -24,6 +26,7 @@ export const DEFAULT_STORE_THEME: StoreTheme = {
   tagline: null,
   hero_mode: "products",
   product_slider_count: 8,
+  product_slider_ids: [],
 };
 
 export const STORE_FONTS = [
@@ -60,6 +63,14 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
     hero_mode = "images";
   }
 
+  const product_slider_ids = Array.isArray(t.product_slider_ids)
+    ? [
+        ...new Set(
+          t.product_slider_ids.filter((id): id is string => typeof id === "string" && !!id),
+        ),
+      ].slice(0, MAX_PRODUCT_SLIDER)
+    : [];
+
   return {
     primary: typeof t.primary === "string" && /^#[0-9a-fA-F]{6}$/.test(t.primary)
       ? t.primary
@@ -77,13 +88,34 @@ export function parseStoreTheme(raw: unknown): StoreTheme {
     tagline: typeof t.tagline === "string" && t.tagline.trim() ? t.tagline.trim() : null,
     hero_mode,
     product_slider_count,
+    product_slider_ids,
   };
+}
+
+/** Resolve which products appear in the storefront hero slider. */
+export function pickSliderProducts<T extends { id: string }>(
+  products: T[],
+  theme: Pick<StoreTheme, "product_slider_ids" | "product_slider_count">,
+): T[] {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  if (theme.product_slider_ids.length > 0) {
+    return theme.product_slider_ids
+      .map((id) => byId.get(id))
+      .filter((p): p is T => !!p)
+      .slice(0, MAX_PRODUCT_SLIDER);
+  }
+  return products.slice(0, theme.product_slider_count);
 }
 
 /** Convert #RRGGBB to "H S% L%" for CSS vars used as hsl(var(--x)) */
 export function hexToHslChannels(hex: string): string {
+  const { h, s, l } = hexToHsl(hex);
+  return `${h} ${s}% ${l}%`;
+}
+
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const raw = hex.replace("#", "");
-  if (raw.length !== 6) return "0 0% 0%";
+  if (raw.length !== 6) return { h: 0, s: 0, l: 0 };
   const r = parseInt(raw.slice(0, 2), 16) / 255;
   const g = parseInt(raw.slice(2, 4), 16) / 255;
   const b = parseInt(raw.slice(4, 6), 16) / 255;
@@ -107,7 +139,15 @@ export function hexToHslChannels(hex: string): string {
         break;
     }
   }
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
+  };
+}
+
+function channels(h: number, s: number, l: number): string {
+  return `${h} ${Math.max(0, Math.min(100, Math.round(s)))}% ${Math.max(0, Math.min(100, Math.round(l)))}%`;
 }
 
 function relativeLuminance(hex: string): number {
@@ -126,21 +166,45 @@ function contrastForeground(bgHex: string): string {
   return relativeLuminance(bgHex) > 0.45 ? "220 25% 12%" : "40 33% 98%";
 }
 
+/** Full storefront palette derived from merchant primary + accent. */
 export function themeToCssVars(theme: StoreTheme): CSSProperties {
-  const primary = hexToHslChannels(theme.primary);
-  const accent = hexToHslChannels(theme.accent);
+  const p = hexToHsl(theme.primary);
+  const a = hexToHsl(theme.accent);
+  const primary = channels(p.h, p.s, p.l);
+  const accent = channels(a.h, a.s, a.l);
   const stack = `"${theme.font}", Cairo, Inter, sans-serif`;
+
+  // Soft page wash from primary hue; keep cards near-white for readability
+  const background = channels(p.h, Math.min(28, Math.max(8, p.s * 0.35)), 97);
+  const foreground = channels(p.h, Math.min(40, p.s), Math.min(18, Math.max(10, p.l > 50 ? 14 : p.l)));
+  const muted = channels(p.h, Math.min(22, Math.max(6, p.s * 0.3)), 93);
+  const mutedFg = channels(p.h, Math.min(18, p.s * 0.25), 42);
+  const border = channels(p.h, Math.min(20, Math.max(6, p.s * 0.25)), 88);
+  const card = channels(p.h, Math.min(16, p.s * 0.15), 99);
+
   return {
+    ["--background" as string]: background,
+    ["--foreground" as string]: foreground,
+    ["--card" as string]: card,
+    ["--card-foreground" as string]: foreground,
+    ["--popover" as string]: card,
+    ["--popover-foreground" as string]: foreground,
     ["--primary" as string]: primary,
     ["--primary-foreground" as string]: contrastForeground(theme.primary),
     ["--secondary" as string]: accent,
     ["--secondary-foreground" as string]: contrastForeground(theme.accent),
+    ["--muted" as string]: muted,
+    ["--muted-foreground" as string]: mutedFg,
     ["--accent" as string]: accent,
     ["--accent-foreground" as string]: contrastForeground(theme.accent),
+    ["--border" as string]: border,
+    ["--input" as string]: border,
     ["--ring" as string]: primary,
     ["--font-sans" as string]: stack,
     ["--font-display" as string]: stack,
     fontFamily: stack,
+    backgroundColor: `hsl(${background})`,
+    color: `hsl(${foreground})`,
   };
 }
 

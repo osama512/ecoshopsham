@@ -14,6 +14,9 @@ import {
   Trash2,
   ImagePlus,
   RotateCcw,
+  ChevronUp,
+  ChevronDown,
+  Package,
 } from "lucide-react";
 import {
   Select,
@@ -33,6 +36,10 @@ import {
   type StoreHeroMode,
   type StoreTheme,
 } from "@/lib/storeTheme";
+import type { Product } from "@/integrations/supabase/db-types";
+import { Checkbox } from "@/components/ui/checkbox";
+
+type CatalogProduct = Pick<Product, "id" | "name" | "image_url" | "images" | "is_visible" | "price">;
 
 const StoreThemeSettings = () => {
   const { user } = useAuth();
@@ -41,6 +48,7 @@ const StoreThemeSettings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,22 +58,71 @@ const StoreThemeSettings = () => {
 
     const fetchTheme = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("store_settings" as any)
-        .select("theme")
-        .eq("merchant_id", userId)
-        .maybeSingle();
+      const [{ data }, { data: products }] = await Promise.all([
+        supabase
+          .from("store_settings" as any)
+          .select("theme")
+          .eq("merchant_id", userId)
+          .maybeSingle(),
+        supabase
+          .from("products")
+          .select("id, name, image_url, images, is_visible, price")
+          .eq("merchant_id", userId)
+          .order("created_at", { ascending: false }),
+      ]);
 
       if (data) {
         const parsed = parseStoreTheme((data as any).theme);
         setTheme(parsed);
         ensureStoreFont(parsed.font);
       }
+      setCatalog((products as CatalogProduct[]) || []);
       setLoading(false);
     };
 
     fetchTheme();
   }, [user?.id]);
+
+  const toggleSliderProduct = (productId: string) => {
+    setTheme((t) => {
+      const selected = t.product_slider_ids.includes(productId);
+      if (selected) {
+        return { ...t, product_slider_ids: t.product_slider_ids.filter((id) => id !== productId) };
+      }
+      if (t.product_slider_ids.length >= MAX_PRODUCT_SLIDER) {
+        return t;
+      }
+      return { ...t, product_slider_ids: [...t.product_slider_ids, productId] };
+    });
+  };
+
+  const tryToggleSliderProduct = (productId: string) => {
+    if (
+      !theme.product_slider_ids.includes(productId) &&
+      theme.product_slider_ids.length >= MAX_PRODUCT_SLIDER
+    ) {
+      toast({
+        title: `يمكنك اختيار ${MAX_PRODUCT_SLIDER} منتجات كحد أقصى`,
+        variant: "destructive",
+      });
+      return;
+    }
+    toggleSliderProduct(productId);
+  };
+
+  const moveSliderProduct = (productId: string, direction: -1 | 1) => {
+    setTheme((t) => {
+      const ids = [...t.product_slider_ids];
+      const index = ids.indexOf(productId);
+      if (index < 0) return t;
+      const next = index + direction;
+      if (next < 0 || next >= ids.length) return t;
+      [ids[index], ids[next]] = [ids[next], ids[index]];
+      return { ...t, product_slider_ids: ids };
+    });
+  };
+
+  const productThumb = (p: CatalogProduct) => p.images?.[0] || p.image_url || null;
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     if (!user) return null;
@@ -129,6 +186,7 @@ const StoreThemeSettings = () => {
       tagline: theme.tagline?.trim() || null,
       logo_url: theme.logo_url || null,
       banners: theme.banners.slice(0, MAX_STORE_BANNERS),
+      product_slider_ids: theme.product_slider_ids.slice(0, MAX_PRODUCT_SLIDER),
     };
 
     const { error } = await (supabase.from("store_settings") as any).upsert(
@@ -312,7 +370,7 @@ const StoreThemeSettings = () => {
         <div>
           <Label>بانر الواجهة / السلايدر</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            يمكن عرض أحدث منتجاتك كسلايدر متجاوب (٤ على الشاشات العريضة، ثم ٣، ٢، ١ حسب الحجم).
+            اختر بنفسك المنتجات التي تظهر في السلايدر، أو اترك الاختيار فارغاً لعرض أحدث المنتجات تلقائياً.
           </p>
         </div>
 
@@ -335,33 +393,163 @@ const StoreThemeSettings = () => {
         </div>
 
         {(theme.hero_mode === "products" || theme.hero_mode === "both") && (
-          <div className="space-y-2">
-            <Label htmlFor="sliderCount">عدد المنتجات في السلايدر</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                id="sliderCount"
-                type="number"
-                min={MIN_PRODUCT_SLIDER}
-                max={MAX_PRODUCT_SLIDER}
-                value={theme.product_slider_count}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10);
-                  if (!Number.isFinite(n)) return;
-                  setTheme((t) => ({
-                    ...t,
-                    product_slider_count: Math.min(
-                      MAX_PRODUCT_SLIDER,
-                      Math.max(MIN_PRODUCT_SLIDER, n),
-                    ),
-                  }));
-                }}
-                className="w-24"
-                dir="ltr"
-              />
-              <span className="text-xs text-muted-foreground">
-                من {MIN_PRODUCT_SLIDER} إلى {MAX_PRODUCT_SLIDER} (أحدث المنتجات الظاهرة)
-              </span>
+          <div className="space-y-3">
+            <div>
+              <Label>اختر منتجات السلايدر</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                حدّد المنتجات التي تظهر في بانر الواجهة. رتّبها بالأسهم. حتى {MAX_PRODUCT_SLIDER} منتجات.
+                إن لم تختر شيئاً تُعرض أحدث المنتجات تلقائياً.
+              </p>
             </div>
+
+            {theme.product_slider_ids.length > 0 && (
+              <div className="space-y-1.5 rounded-md border p-2 bg-muted/20">
+                <p className="text-xs font-medium px-1">
+                  المحدد ({theme.product_slider_ids.length}/{MAX_PRODUCT_SLIDER}) — الترتيب كما في السلايدر
+                </p>
+                {theme.product_slider_ids.map((id, index) => {
+                  const p = catalog.find((c) => c.id === id);
+                  if (!p) return null;
+                  const thumb = productThumb(p);
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5"
+                    >
+                      <span className="text-[10px] text-muted-foreground w-4 text-center shrink-0">
+                        {index + 1}
+                      </span>
+                      {thumb ? (
+                        <img src={thumb} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                      ) : (
+                        <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="text-sm truncate flex-1">{p.name}</span>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={index === 0}
+                          onClick={() => moveSliderProduct(id, -1)}
+                          aria-label="أعلى"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={index === theme.product_slider_ids.length - 1}
+                          onClick={() => moveSliderProduct(id, 1)}
+                          aria-label="أسفل"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => tryToggleSliderProduct(id)}
+                          aria-label="إزالة"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setTheme((t) => ({ ...t, product_slider_ids: [] }))}
+                >
+                  مسح الاختيار (عرض تلقائي)
+                </Button>
+              </div>
+            )}
+
+            {catalog.length === 0 ? (
+              <p className="text-xs text-muted-foreground">لا توجد منتجات بعد — أضف منتجات من لوحة التحكم أولاً.</p>
+            ) : (
+              <div className="max-h-64 overflow-y-auto space-y-1 rounded-md border p-2">
+                {catalog.map((p) => {
+                  const checked = theme.product_slider_ids.includes(p.id);
+                  const thumb = productThumb(p);
+                  const disabled =
+                    !checked && theme.product_slider_ids.length >= MAX_PRODUCT_SLIDER;
+                  return (
+                    <label
+                      key={p.id}
+                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-muted/50 ${
+                        disabled ? "opacity-50 cursor-not-allowed" : ""
+                      } ${!p.is_visible ? "opacity-70" : ""}`}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        disabled={disabled}
+                        onCheckedChange={() => {
+                          if (!disabled || checked) tryToggleSliderProduct(p.id);
+                        }}
+                      />
+                      {thumb ? (
+                        <img src={thumb} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="text-sm truncate flex-1">{p.name}</span>
+                      {!p.is_visible && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">مخفي</span>
+                      )}
+                      <span className="text-[11px] text-muted-foreground shrink-0" dir="ltr">
+                        {Number(p.price).toLocaleString()}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {theme.product_slider_ids.length === 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="sliderCount">عدد المنتجات التلقائي</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="sliderCount"
+                    type="number"
+                    min={MIN_PRODUCT_SLIDER}
+                    max={MAX_PRODUCT_SLIDER}
+                    value={theme.product_slider_count}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (!Number.isFinite(n)) return;
+                      setTheme((t) => ({
+                        ...t,
+                        product_slider_count: Math.min(
+                          MAX_PRODUCT_SLIDER,
+                          Math.max(MIN_PRODUCT_SLIDER, n),
+                        ),
+                      }));
+                    }}
+                    className="w-24"
+                    dir="ltr"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    يُستخدم فقط عند عدم اختيار منتجات يدوياً
+                  </span>
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground">
               العرض على الشاشة: عريض ٤ · متوسط ٣ · صغير ٢ · جوال ١ (تمرير تلقائي).
             </p>
@@ -423,33 +611,34 @@ const StoreThemeSettings = () => {
       <div
         className="rounded-lg border overflow-hidden"
         style={{
-          ["--preview-primary" as string]: theme.primary,
-          ["--preview-accent" as string]: theme.accent,
+          background: theme.primary,
           fontFamily: `"${theme.font}", Cairo, sans-serif`,
         }}
       >
-        <div className="px-4 py-3 text-center border-b" style={{ background: "hsl(var(--card))" }}>
+        <div className="px-4 py-3 text-center" style={{ color: "#fff" }}>
           <div className="flex items-center justify-center gap-2">
             {theme.logo_url ? (
               <img src={theme.logo_url} alt="" className="h-7 w-7 rounded-full object-cover" />
             ) : null}
-            <span className="font-bold text-sm" style={{ color: theme.primary }}>
-              معاينة المتجر
-            </span>
+            <span className="font-bold text-sm">معاينة المتجر</span>
           </div>
-          {(theme.tagline || "تصفّح المنتجات واطلب مباشرة") && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {theme.tagline || "تصفّح المنتجات واطلب مباشرة"}
-            </p>
-          )}
+          <p className="text-[10px] opacity-80 mt-0.5">
+            {theme.tagline || "تصفّح المنتجات واطلب مباشرة"}
+          </p>
         </div>
-        <div className="p-3 flex items-center justify-between gap-2 bg-muted/30">
+        <div
+          className="p-3 flex items-center justify-between gap-2"
+          style={{
+            background: `color-mix(in srgb, ${theme.primary} 12%, white)`,
+            color: theme.primary,
+          }}
+        >
           <span className="text-xs font-bold" style={{ color: theme.accent }}>
             25,000 ل.س
           </span>
           <span
-            className="text-[10px] px-2 py-1 rounded text-white"
-            style={{ background: theme.primary }}
+            className="text-[10px] px-2 py-1 rounded"
+            style={{ background: theme.primary, color: "#fff" }}
           >
             اطلب الآن
           </span>
