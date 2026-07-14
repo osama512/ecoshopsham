@@ -48,6 +48,10 @@ export interface Database {
           order_details: unknown;
           total_price: number;
           status: string;
+          payment_status: string | null;
+          shamcash_invoice: string | null;
+          shamcash_tran_id: string | null;
+          paid_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -58,6 +62,10 @@ export interface Database {
           order_details: unknown;
           total_price: number;
           status?: string;
+          payment_status?: string | null;
+          shamcash_invoice?: string | null;
+          shamcash_tran_id?: string | null;
+          paid_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -68,7 +76,37 @@ export interface Database {
           order_details?: unknown;
           total_price?: number;
           status?: string;
+          payment_status?: string | null;
+          shamcash_invoice?: string | null;
+          shamcash_tran_id?: string | null;
+          paid_at?: string | null;
           created_at?: string;
+        };
+      };
+      merchant_shamcash: {
+        Row: {
+          merchant_id: string;
+          wallet_address: string;
+          api_key: string;
+          enabled: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          merchant_id: string;
+          wallet_address: string;
+          api_key: string;
+          enabled?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          merchant_id?: string;
+          wallet_address?: string;
+          api_key?: string;
+          enabled?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
       };
     };

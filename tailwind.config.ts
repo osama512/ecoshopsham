@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "Cairo", "sans-serif"],
-        display: ["Cairo", "Inter", "sans-serif"],
+        sans: ["var(--font-sans)"],
+        display: ["var(--font-display)"],
       },
       colors: {
         success: {

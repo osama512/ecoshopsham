@@ -9,6 +9,13 @@ import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
 import { extractIdFromSlug } from "@/lib/slug";
 import { isCustomDomainHost, storefrontPathForMerchant } from "@/lib/customDomain";
+import {
+  DEFAULT_STORE_THEME,
+  ensureStoreFont,
+  parseStoreTheme,
+  themeToCssVars,
+  type StoreTheme,
+} from "@/lib/storeTheme";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -27,10 +34,12 @@ const ProductDetails = () => {
   const [domainStatus, setDomainStatus] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
+  const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
 
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
+      setTheme({ ...DEFAULT_STORE_THEME });
       // Try exact UUID match first, then short-id prefix match
       let prod: any = null;
       const { data: exact } = await supabase
@@ -60,11 +69,18 @@ const ProductDetails = () => {
       setMerchantId(p.merchant_id || "");
 
       if (p.merchant_id) {
-        const { data: profile } = await supabase
-          .from("profiles" as any)
-          .select("*")
-          .eq("id", p.merchant_id)
-          .single();
+        const [{ data: profile }, { data: settings }] = await Promise.all([
+          supabase
+            .from("profiles" as any)
+            .select("*")
+            .eq("id", p.merchant_id)
+            .single(),
+          supabase
+            .from("store_settings" as any)
+            .select("theme")
+            .eq("merchant_id", p.merchant_id)
+            .maybeSingle(),
+        ]);
 
         if (profile) {
           const pr = profile as any;
@@ -81,6 +97,12 @@ const ProductDetails = () => {
             const diff = (Date.now() - new Date(pr.created_at).getTime()) / 86400000;
             if (diff > TRIAL_DAYS) setUnavailable(true);
           }
+        }
+
+        if (settings) {
+          const parsed = parseStoreTheme((settings as any).theme);
+          setTheme(parsed);
+          ensureStoreFont(parsed.font);
         }
       }
       setLoading(false);
@@ -138,7 +160,7 @@ const ProductDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div className="min-h-screen bg-background" dir="rtl" style={themeToCssVars(theme)}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
@@ -152,7 +174,11 @@ const ProductDetails = () => {
             العودة للمتجر
           </Button>
           <div className="mr-auto flex items-center gap-1.5">
-            <Store className="h-4 w-4 text-secondary" />
+            {theme.logo_url ? (
+              <img src={theme.logo_url} alt={storeName} className="h-6 w-6 rounded-full object-cover border" />
+            ) : (
+              <Store className="h-4 w-4 text-secondary" />
+            )}
             <span className="text-sm font-display font-semibold">{storeName}</span>
           </div>
         </div>

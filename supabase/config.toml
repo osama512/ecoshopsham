@@ -1,1 +1,9 @@
 project_id = "paxtvlbddpemjlnftjlq"
+
+# Sham Cash webhook is called by external provider (no Supabase JWT)
+[functions.shamcash-webhook]
+verify_jwt = false
+
+# Customers create/verify invoices while logged out (anon key is enough)
+[functions.shamcash-payment]
+verify_jwt = false

@@ -21,6 +21,21 @@ const statusConfig: Record<string, { label: string; className: string; icon: Rea
   cancelled: { label: "ملغى", className: "bg-destructive/15 text-destructive border-destructive/30", icon: XCircle },
 };
 
+const paymentStatusLabel: Record<string, { label: string; className: string }> = {
+  unpaid: { label: "غير مدفوع", className: "bg-muted text-muted-foreground border-border" },
+  awaiting_payment: { label: "بانتظار شام كاش", className: "bg-warning/15 text-warning border-warning/30" },
+  paid: { label: "مدفوع شام كاش", className: "bg-success/15 text-success border-success/30" },
+  expired: { label: "فاتورة منتهية", className: "bg-destructive/15 text-destructive border-destructive/30" },
+  failed: { label: "فشل الدفع", className: "bg-destructive/15 text-destructive border-destructive/30" },
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  shamcash: "شام كاش",
+  cash: "دفع عند الاستلام",
+  syriatel_cash: "سيريتل / MTN كاش",
+  haram_transfer: "الهرم / الفؤاد",
+};
+
 const statusOptions = [
   { value: "pending", label: "قيد الانتظار" },
   { value: "confirmed", label: "مؤكد" },
@@ -142,18 +157,23 @@ const OrdersPage = () => {
 
   const exportCSV = () => {
     if (orders.length === 0) return;
-    const headers = ["الاسم", "الهاتف", "المنتج", "المدينة", "العنوان", "الدفع", "الإجمالي", "الحالة", "التاريخ"];
-    const rows = orders.map((o) => [
-      o.customer_name,
-      o.customer_phone ?? "",
-      getOrderDetail(o.order_details, "product_name"),
-      getOrderDetail(o.order_details, "city"),
-      getOrderDetail(o.order_details, "address"),
-      getOrderDetail(o.order_details, "payment_method"),
-      String(o.total_price),
-      statusConfig[o.status]?.label ?? o.status,
-      formatDate(o.created_at),
-    ]);
+    const headers = ["الاسم", "الهاتف", "المنتج", "المدينة", "العنوان", "الدفع", "حالة الدفع", "الإجمالي", "الحالة", "التاريخ"];
+    const rows = orders.map((o) => {
+      const pm = getOrderDetail(o.order_details, "payment_method");
+      const ps = (o as any).payment_status as string | undefined;
+      return [
+        o.customer_name,
+        o.customer_phone ?? "",
+        getOrderDetail(o.order_details, "product_name"),
+        getOrderDetail(o.order_details, "city"),
+        getOrderDetail(o.order_details, "address"),
+        PAYMENT_METHOD_LABELS[pm] || pm,
+        ps ? (paymentStatusLabel[ps]?.label ?? ps) : "",
+        String(o.total_price),
+        statusConfig[o.status]?.label ?? o.status,
+        formatDate(o.created_at),
+      ];
+    });
 
     const BOM = "\uFEFF";
     const csv = BOM + [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
@@ -200,6 +220,9 @@ const OrdersPage = () => {
             const city = getOrderDetail(order.order_details, "city");
             const address = getOrderDetail(order.order_details, "address");
             const payment = getOrderDetail(order.order_details, "payment_method");
+            const paymentStatus = (order as any).payment_status as string | undefined;
+            const shamInvoice = (order as any).shamcash_invoice as string | undefined;
+            const payBadge = paymentStatus ? paymentStatusLabel[paymentStatus] : null;
 
             return (
               <Card key={order.id} className="p-4 hover:shadow-md transition-shadow space-y-3">
@@ -210,10 +233,17 @@ const OrdersPage = () => {
                       <p className="text-xs text-muted-foreground">{order.customer_phone}</p>
                     )}
                   </div>
-                  <Badge variant="outline" className={`${config.className} gap-1 text-[11px] font-medium shrink-0`}>
-                    <StatusIcon className="h-3 w-3" />
-                    {config.label}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge variant="outline" className={`${config.className} gap-1 text-[11px] font-medium`}>
+                      <StatusIcon className="h-3 w-3" />
+                      {config.label}
+                    </Badge>
+                    {payBadge && payment === "shamcash" && (
+                      <Badge variant="outline" className={`${payBadge.className} text-[10px] font-medium`}>
+                        {payBadge.label}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {productName && (
@@ -221,7 +251,17 @@ const OrdersPage = () => {
                     <p><span className="text-muted-foreground">المنتج:</span> {productName}</p>
                     {city && <p><span className="text-muted-foreground">المدينة:</span> {city}</p>}
                     {address && <p><span className="text-muted-foreground">العنوان:</span> {address}</p>}
-                    {payment && <p><span className="text-muted-foreground">الدفع:</span> {payment}</p>}
+                    {payment && (
+                      <p>
+                        <span className="text-muted-foreground">الدفع:</span>{" "}
+                        {PAYMENT_METHOD_LABELS[payment] || payment}
+                      </p>
+                    )}
+                    {shamInvoice && (
+                      <p className="font-mono" dir="ltr">
+                        <span className="text-muted-foreground font-sans">فاتورة:</span> {shamInvoice}
+                      </p>
+                    )}
                   </div>
                 )}
 

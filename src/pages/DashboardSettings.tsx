@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import CheckoutSettings from "@/components/CheckoutSettings";
+import StoreThemeSettings from "@/components/StoreThemeSettings";
 import {
   isApexDomain,
   isValidCustomDomain,
@@ -392,6 +393,8 @@ const DashboardSettings = () => {
             : "الباقة المجانية — حتى 10 منتجات. تواصل مع الإدارة للترقية."}
         </p>
       </Card>
+
+      <StoreThemeSettings />
 
       <Separator />
 

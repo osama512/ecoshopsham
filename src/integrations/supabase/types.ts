@@ -55,6 +55,10 @@ export type Database = {
           id: string
           merchant_id: string
           order_details: Json | null
+          paid_at: string | null
+          payment_status: string | null
+          shamcash_invoice: string | null
+          shamcash_tran_id: string | null
           status: string | null
           total_price: number
         }
@@ -65,6 +69,10 @@ export type Database = {
           id?: string
           merchant_id: string
           order_details?: Json | null
+          paid_at?: string | null
+          payment_status?: string | null
+          shamcash_invoice?: string | null
+          shamcash_tran_id?: string | null
           status?: string | null
           total_price: number
         }
@@ -75,8 +83,39 @@ export type Database = {
           id?: string
           merchant_id?: string
           order_details?: Json | null
+          paid_at?: string | null
+          payment_status?: string | null
+          shamcash_invoice?: string | null
+          shamcash_tran_id?: string | null
           status?: string | null
           total_price?: number
+        }
+        Relationships: []
+      }
+      merchant_shamcash: {
+        Row: {
+          merchant_id: string
+          wallet_address: string
+          api_key: string
+          enabled: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          merchant_id: string
+          wallet_address: string
+          api_key: string
+          enabled?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          merchant_id?: string
+          wallet_address?: string
+          api_key?: string
+          enabled?: boolean
+          created_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -181,6 +220,7 @@ export type Database = {
           payment_instructions: string | null
           payment_methods: Json | null
           shipping_zones: Json | null
+          theme: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -190,6 +230,7 @@ export type Database = {
           payment_instructions?: string | null
           payment_methods?: Json | null
           shipping_zones?: Json | null
+          theme?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -199,6 +240,7 @@ export type Database = {
           payment_instructions?: string | null
           payment_methods?: Json | null
           shipping_zones?: Json | null
+          theme?: Json | null
           updated_at?: string | null
         }
         Relationships: []

@@ -8,7 +8,15 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Product } from "@/integrations/supabase/db-types";
 import OrderFormModal from "@/components/OrderFormModal";
 import ProductImageCarousel from "@/components/ProductImageCarousel";
+import StorefrontBanner from "@/components/StorefrontBanner";
 import { productSlug } from "@/lib/slug";
+import {
+  DEFAULT_STORE_THEME,
+  ensureStoreFont,
+  parseStoreTheme,
+  themeToCssVars,
+  type StoreTheme,
+} from "@/lib/storeTheme";
 
 const DEFAULT_WHATSAPP = "963954170549";
 const TRIAL_DAYS = 7;
@@ -31,6 +39,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
   const [notFound, setNotFound] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [resolvedMerchantId, setResolvedMerchantId] = useState<string>("");
+  const [theme, setTheme] = useState<StoreTheme>({ ...DEFAULT_STORE_THEME });
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -38,6 +47,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
       setNotFound(false);
       setSuspended(false);
       setTrialExpired(false);
+      setTheme({ ...DEFAULT_STORE_THEME });
 
       let merchantId = storeId!;
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId!);
@@ -118,14 +128,26 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
 
       setResolvedMerchantId(merchantId);
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("merchant_id", merchantId)
-        .eq("is_visible", true)
-        .order("created_at", { ascending: false });
+      const [{ data, error }, { data: settings }] = await Promise.all([
+        supabase
+          .from("products")
+          .select("*")
+          .eq("merchant_id", merchantId)
+          .eq("is_visible", true)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("store_settings" as any)
+          .select("theme")
+          .eq("merchant_id", merchantId)
+          .maybeSingle(),
+      ]);
 
       if (!error && data) setProducts(data);
+      if (settings) {
+        const parsed = parseStoreTheme((settings as any).theme);
+        setTheme(parsed);
+        ensureStoreFont(parsed.font);
+      }
       setLoading(false);
     };
 
@@ -133,14 +155,28 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
   }, [storeId]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={themeToCssVars(theme)}>
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b px-4 py-4 text-center">
         <div className="flex items-center justify-center gap-2">
-          <Store className="h-5 w-5 text-secondary" />
+          {theme.logo_url ? (
+            <img
+              src={theme.logo_url}
+              alt={storeName}
+              className="h-8 w-8 rounded-full object-cover border"
+            />
+          ) : (
+            <Store className="h-5 w-5 text-secondary" />
+          )}
           <h1 className="text-lg font-display font-bold tracking-tight">{storeName}</h1>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">تصفّح المنتجات واطلب مباشرة</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {theme.tagline || "تصفّح المنتجات واطلب مباشرة"}
+        </p>
       </header>
+
+      {!loading && !notFound && !suspended && !trialExpired && theme.banners.length > 0 && (
+        <StorefrontBanner banners={theme.banners} storeName={storeName} />
+      )}
 
       <main className="px-4 py-4 max-w-2xl mx-auto">
         {loading ? (

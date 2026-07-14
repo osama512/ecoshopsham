@@ -6,7 +6,9 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Plus, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Save, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ShippingZone {
   id: string;
@@ -28,6 +30,7 @@ interface PaymentMethodEntry {
 }
 
 const DEFAULT_METHODS: PaymentMethodEntry[] = [
+  { id: "shamcash", name: "شام كاش", details: "", enabled: false },
   { id: "syriatel_cash", name: "سيريتل كاش / MTN كاش", details: "", enabled: false },
   { id: "haram_transfer", name: "شركة الهرم / الفؤاد", details: "", enabled: false },
   { id: "cash", name: "دفع عند الاستلام", details: "", enabled: true },
@@ -44,26 +47,36 @@ const CheckoutSettings = () => {
   const [newZonePrice, setNewZonePrice] = useState("");
   const [newMethodName, setNewMethodName] = useState("");
 
+  // Sham Cash private credentials
+  const [shamcashWallet, setShamcashWallet] = useState("");
+  const [shamcashApiKey, setShamcashApiKey] = useState("");
+  const [shamcashApiKeyConfigured, setShamcashApiKeyConfigured] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+
   useEffect(() => {
     const userId = user?.id;
     if (!userId) return;
 
     const fetchSettings = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("store_settings" as any)
-        .select("*")
-        .eq("merchant_id", userId)
-        .maybeSingle();
+      const [{ data }, { data: sc }] = await Promise.all([
+        supabase
+          .from("store_settings" as any)
+          .select("*")
+          .eq("merchant_id", userId)
+          .maybeSingle(),
+        (supabase.from("merchant_shamcash" as any) as any)
+          .select("wallet_address, api_key, enabled")
+          .eq("merchant_id", userId)
+          .maybeSingle(),
+      ]);
 
-      if (!error && data) {
+      if (data) {
         const d = data as any;
         if (d.shipping_zones) setShippingZones(d.shipping_zones);
 
-        // Load payment methods from payment_methods JSON or legacy payment_methods config
         const pm = d.payment_methods;
         if (Array.isArray(pm)) {
-          // New format: array of PaymentMethodEntry
           const merged = DEFAULT_METHODS.map((dm) => {
             const saved = pm.find((p: PaymentMethodEntry) => p.id === dm.id);
             return saved ? { ...dm, ...saved } : dm;
@@ -71,17 +84,44 @@ const CheckoutSettings = () => {
           const custom = pm.filter(
             (p: PaymentMethodEntry) => !DEFAULT_METHODS.some((dm) => dm.id === p.id)
           );
-          setPaymentMethods([...merged, ...custom]);
+          // Sync enabled flag from private table if present
+          const withSc = merged.map((m) =>
+            m.id === "shamcash" && sc
+              ? { ...m, enabled: !!sc.enabled }
+              : m
+          );
+          setPaymentMethods([...withSc, ...custom]);
         } else if (pm && typeof pm === "object") {
-          // Legacy format: { cash: true, syriatel_cash: false, ... }
           setPaymentMethods(
             DEFAULT_METHODS.map((m) => ({
               ...m,
-              enabled: pm[m.id] ?? m.enabled,
+              enabled:
+                m.id === "shamcash" && sc
+                  ? !!sc.enabled
+                  : (pm[m.id] ?? m.enabled),
             }))
           );
+        } else if (sc?.enabled) {
+          setPaymentMethods(
+            DEFAULT_METHODS.map((m) =>
+              m.id === "shamcash" ? { ...m, enabled: true } : m
+            )
+          );
         }
+      } else if (sc?.enabled) {
+        setPaymentMethods(
+          DEFAULT_METHODS.map((m) =>
+            m.id === "shamcash" ? { ...m, enabled: true } : m
+          )
+        );
       }
+
+      if (sc) {
+        setShamcashWallet(sc.wallet_address || "");
+        setShamcashApiKeyConfigured(!!sc.api_key);
+        setShamcashApiKey(""); // never echo full key into the form
+      }
+
       setLoading(false);
     };
 
@@ -133,15 +173,33 @@ const CheckoutSettings = () => {
     if (!user) return;
     const atLeastOne = paymentMethods.some((m) => m.enabled);
     if (!atLeastOne) {
-      toast({ title: "يجب تفعيل طريقة دفع واحدة على الأقل", variant: "destructive" });
+      toast({ title: "يجب إظهار طريقة دفع واحدة على الأقل للزبائن", variant: "destructive" });
       return;
     }
+
+    const shamcashEnabled = paymentMethods.find((m) => m.id === "shamcash")?.enabled;
+    if (shamcashEnabled) {
+      if (!shamcashWallet.trim()) {
+        toast({ title: "أدخل عنوان محفظة شام كاش", variant: "destructive" });
+        return;
+      }
+      if (!shamcashApiKeyConfigured && !shamcashApiKey.trim()) {
+        toast({ title: "أدخل مفتاح API الخاص بشام كاش", variant: "destructive" });
+        return;
+      }
+    }
+
     setSaving(true);
+
+    // Persist methods without secrets; shamcash details stay empty publicly
+    const publicMethods = paymentMethods.map((m) =>
+      m.id === "shamcash" ? { ...m, details: "" } : m
+    );
 
     const { error } = await (supabase.from("store_settings") as any).upsert(
       {
         merchant_id: user.id,
-        payment_methods: paymentMethods,
+        payment_methods: publicMethods,
         shipping_zones: shippingZones,
         updated_at: new Date().toISOString(),
       } as any,
@@ -149,10 +207,60 @@ const CheckoutSettings = () => {
     );
 
     if (error) {
+      setSaving(false);
       toast({ title: "خطأ في الحفظ", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "تم حفظ إعدادات الدفع والشحن! ✅" });
+      return;
     }
+
+    // Save / clear Sham Cash credentials in private table
+    if (shamcashEnabled) {
+      const payload: Record<string, unknown> = {
+        merchant_id: user.id,
+        wallet_address: shamcashWallet.trim(),
+        enabled: true,
+        updated_at: new Date().toISOString(),
+      };
+      if (shamcashApiKey.trim()) {
+        payload.api_key = shamcashApiKey.trim();
+      } else if (!shamcashApiKeyConfigured) {
+        setSaving(false);
+        toast({ title: "أدخل مفتاح API الخاص بشام كاش", variant: "destructive" });
+        return;
+      }
+
+      // If api_key not being updated, fetch existing then upsert full row
+      if (!shamcashApiKey.trim() && shamcashApiKeyConfigured) {
+        const { data: existing } = await (supabase.from("merchant_shamcash" as any) as any)
+          .select("api_key")
+          .eq("merchant_id", user.id)
+          .maybeSingle();
+        if (existing?.api_key) payload.api_key = existing.api_key;
+      }
+
+      const { error: scError } = await (supabase.from("merchant_shamcash" as any) as any).upsert(
+        payload,
+        { onConflict: "merchant_id" }
+      );
+
+      if (scError) {
+        setSaving(false);
+        toast({
+          title: "خطأ في حفظ إعدادات شام كاش",
+          description: scError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      setShamcashApiKeyConfigured(true);
+      setShamcashApiKey("");
+    } else {
+      // Disable without deleting credentials (merchant can re-enable later)
+      await (supabase.from("merchant_shamcash" as any) as any)
+        .update({ enabled: false, updated_at: new Date().toISOString() })
+        .eq("merchant_id", user.id);
+    }
+
+    toast({ title: "تم حفظ إعدادات الدفع والشحن! ✅" });
     setSaving(false);
   };
 
@@ -171,16 +279,33 @@ const CheckoutSettings = () => {
         <p className="text-sm text-muted-foreground">خصّص طرق الدفع ومناطق الشحن لمتجرك</p>
       </div>
 
-      {/* Payment Methods with Switch toggles */}
       <Card className="p-5 space-y-4">
         <h3 className="font-semibold">طرق الدفع</h3>
-        <p className="text-xs text-muted-foreground">فعّل طرق الدفع وأضف تفاصيل الحساب لكل طريقة. ستظهر للزبائن عند الطلب.</p>
+        <p className="text-xs text-muted-foreground">
+          أظهر أو أخفِ كل طريقة للزبائن عند الطلب. الإخفاء لا يحذف الإعدادات — يمكنك إظهارها لاحقاً.
+        </p>
         <div className="space-y-3">
           {paymentMethods.map((method) => (
-            <div key={method.id} className="space-y-2">
-              <div className="flex flex-row items-center justify-between w-full gap-4 p-4 border rounded-md">
+            <div
+              key={method.id}
+              className={cn(
+                "space-y-2 rounded-md border p-4 transition-opacity",
+                !method.enabled && "opacity-60 bg-muted/30"
+              )}
+            >
+              <div className="flex flex-row items-center justify-between w-full gap-4">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="text-sm font-medium truncate">{method.name}</span>
+                  <span
+                    className={cn(
+                      "text-[10px] rounded-full px-2 py-0.5 shrink-0 border",
+                      method.enabled
+                        ? "bg-green-600/10 text-green-700 border-green-600/20"
+                        : "bg-muted text-muted-foreground border-border"
+                    )}
+                  >
+                    {method.enabled ? "ظاهر" : "مخفي"}
+                  </span>
                   {isCustomMethod(method.id) && (
                     <Button
                       variant="ghost"
@@ -192,16 +317,71 @@ const CheckoutSettings = () => {
                     </Button>
                   )}
                 </div>
-                <Button
-                  variant={method.enabled ? "default" : "outline"}
-                  size="sm"
-                  className={method.enabled ? "shrink-0 bg-green-600 hover:bg-green-700 text-white" : "shrink-0"}
-                  onClick={() => toggleMethod(method.id)}
-                >
-                  {method.enabled ? "مفعل ✓" : "تفعيل"}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Label
+                    htmlFor={`pay-vis-${method.id}`}
+                    className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
+                  >
+                    إظهار للزبائن
+                  </Label>
+                  <Switch
+                    id={`pay-vis-${method.id}`}
+                    checked={method.enabled}
+                    onCheckedChange={() => toggleMethod(method.id)}
+                    aria-label={method.enabled ? `إخفاء ${method.name}` : `إظهار ${method.name}`}
+                  />
+                </div>
               </div>
-              {method.enabled && (
+
+              {method.id === "shamcash" && (
+                <div className="space-y-3 rounded-md border border-primary/20 bg-primary/5 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    من لوحة شام كاش: انسخ عنوان المحفظة ومفتاح API (`sk_...`). المفتاح يُحفظ بشكل خاص ولا يظهر للزبائن.
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">عنوان المحفظة *</Label>
+                    <Input
+                      placeholder="UUID أو عنوان المحفظة (32 hex) أو رقم الحساب"
+                      value={shamcashWallet}
+                      onChange={(e) => setShamcashWallet(e.target.value)}
+                      className="text-sm font-mono"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">
+                      مفتاح API *
+                      {shamcashApiKeyConfigured && !shamcashApiKey && (
+                        <span className="text-muted-foreground font-normal mr-1">
+                          (محفوظ — اتركه فارغاً للإبقاء عليه)
+                        </span>
+                      )}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showApiKey ? "text" : "password"}
+                        placeholder={shamcashApiKeyConfigured ? "••••••••••••••••" : "sk_..."}
+                        value={shamcashApiKey}
+                        onChange={(e) => setShamcashApiKey(e.target.value)}
+                        className="text-sm font-mono pr-10"
+                        dir="ltr"
+                        autoComplete="off"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        onClick={() => setShowApiKey((v) => !v)}
+                      >
+                        {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {method.id !== "shamcash" && (
                 <Input
                   placeholder={METHOD_PLACEHOLDERS[method.id] || "تفاصيل إضافية (اختياري)"}
                   value={method.details}
@@ -213,7 +393,6 @@ const CheckoutSettings = () => {
           ))}
         </div>
 
-        {/* Add custom method */}
         <div className="flex gap-2">
           <Input
             placeholder="اسم طريقة دفع أخرى..."
@@ -228,7 +407,6 @@ const CheckoutSettings = () => {
         </div>
       </Card>
 
-      {/* Shipping Zones */}
       <Card className="p-5 space-y-4">
         <h3 className="font-semibold">مناطق الشحن والتوصيل</h3>
         <p className="text-xs text-muted-foreground">حدد مناطق التوصيل مع أسعارها. سيختار الزبون منطقته عند الطلب.</p>
