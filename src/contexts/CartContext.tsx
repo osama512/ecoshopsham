@@ -89,7 +89,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((product: Product, qty = 1) => {
     const stock = product.stock_quantity ?? 0;
-    if (stock <= 0) return { ok: false, message: "نفذت الكمية" };
+    if (stock <= 0) return { ok: false, message: "غير متوفر" };
     const addQty = Math.max(1, Math.floor(qty));
 
     let result: { ok: boolean; message?: string } = { ok: true };

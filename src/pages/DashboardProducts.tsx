@@ -330,8 +330,19 @@ const DashboardProducts = () => {
                 <Input id="price" type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="stock">الكمية المتوفرة</Label>
-                <Input id="stock" type="number" placeholder="0" min="0" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} />
+                <Label htmlFor="stock">الكمية المتوفرة (المخزون)</Label>
+                <Input
+                  id="stock"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  step="1"
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value.replace(/[^\d]/g, ""))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  عند وصول الكمية إلى 0 يظهر المنتج للزبائن وعلامة <span className="font-semibold">غير متوفر</span> ولا يمكن طلبه.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="desc">الوصف</Label>
@@ -394,7 +405,7 @@ const DashboardProducts = () => {
               <Card key={product.id} className={`p-3 space-y-2 hover:shadow-md transition-shadow relative ${isHidden ? "opacity-60" : ""}`}>
                 {outOfStock && (
                   <Badge variant="destructive" className="absolute top-2 right-2 z-10 text-[10px]">
-                    نفذت الكمية
+                    غير متوفر
                   </Badge>
                 )}
                 {isHidden && (
@@ -416,7 +427,9 @@ const DashboardProducts = () => {
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="font-display font-bold text-sm text-foreground">{Number(product.price).toLocaleString()} ل.س</span>
-                  <span>المخزون: {product.stock_quantity ?? 0}</span>
+                  <span className={outOfStock ? "text-destructive font-semibold" : ""}>
+                    {outOfStock ? "غير متوفر" : `المخزون: ${product.stock_quantity ?? 0}`}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex gap-1">

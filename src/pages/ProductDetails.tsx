@@ -226,7 +226,7 @@ const ProductDetails = () => {
               <div className="flex items-start gap-2">
                 <h1 className="text-lg font-display font-bold leading-tight flex-1">{product.name}</h1>
                 {outOfStock && (
-                  <Badge variant="destructive" className="shrink-0 text-xs">نفذت الكمية</Badge>
+                  <Badge variant="destructive" className="shrink-0 text-xs">غير متوفر</Badge>
                 )}
               </div>
               <p className="font-display font-bold text-lg text-secondary">

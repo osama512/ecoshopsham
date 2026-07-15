@@ -45,7 +45,7 @@ const ProductBannerSlider = ({ products, currency, onOpenProduct, onOrder }: Pro
                   <Card className="overflow-hidden flex flex-col relative h-full">
                     {outOfStock && (
                       <Badge variant="destructive" className="absolute top-2 right-2 z-10 text-[10px]">
-                        نفذت الكمية
+                        غير متوفر
                       </Badge>
                     )}
                     <div className="cursor-pointer" onClick={() => onOpenProduct(product)}>
@@ -77,7 +77,7 @@ const ProductBannerSlider = ({ products, currency, onOpenProduct, onOrder }: Pro
                         onClick={() => onOrder(product)}
                         disabled={outOfStock}
                       >
-                        {outOfStock ? "نفذت الكمية" : "أضف إلى السلة"}
+                        {outOfStock ? "غير متوفر" : "أضف إلى السلة"}
                       </Button>
                     </div>
                   </Card>

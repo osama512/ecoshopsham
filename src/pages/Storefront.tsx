@@ -274,7 +274,7 @@ const Storefront = ({ storeKey }: StorefrontProps) => {
                 <Card key={product.id} className="overflow-hidden flex flex-col relative">
                   {outOfStock && (
                     <Badge variant="destructive" className="absolute top-2 right-2 z-10 text-[10px]">
-                      نفذت الكمية
+                      غير متوفر
                     </Badge>
                   )}
                   <div
